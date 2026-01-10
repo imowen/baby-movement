@@ -1,0 +1,141 @@
+import { JSONFilePreset } from 'lowdb/node';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// 默认数据结构
+const defaultData = {
+  users: [],
+  movements: []
+};
+
+// 初始化数据库
+const dbPath = join(__dirname, 'db.json');
+const db = await JSONFilePreset(dbPath, defaultData);
+
+// 辅助函数：生成 ID
+const generateId = (collection) => {
+  if (collection.length === 0) return 1;
+  return Math.max(...collection.map(item => item.id)) + 1;
+};
+
+// 用户相关操作
+export const userOperations = {
+  findByUsername(username) {
+    return db.data.users.find(u => u.username === username);
+  },
+
+  create(username, passwordHash, displayName) {
+    const user = {
+      id: generateId(db.data.users),
+      username,
+      password_hash: passwordHash,
+      display_name: displayName,
+      created_at: new Date().toISOString()
+    };
+    db.data.users.push(user);
+    db.write();
+    return user;
+  }
+};
+
+// 胎动记录相关操作
+export const movementOperations = {
+  create(userId, timestamp, intensity, tag, note) {
+    const movement = {
+      id: generateId(db.data.movements),
+      user_id: userId,
+      timestamp,
+      intensity,
+      tag,
+      note: note || '',
+      created_at: new Date().toISOString()
+    };
+    db.data.movements.push(movement);
+    db.write();
+    return movement;
+  },
+
+  findAll({ startDate, endDate, limit = 50 }) {
+    let movements = [...db.data.movements];
+
+    if (startDate) {
+      movements = movements.filter(m => m.timestamp >= startDate);
+    }
+
+    if (endDate) {
+      movements = movements.filter(m => m.timestamp <= endDate);
+    }
+
+    // 按时间倒序排序
+    movements.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    return movements.slice(0, limit);
+  },
+
+  getTodayStats(date) {
+    const movements = db.data.movements.filter(m => {
+      return m.timestamp.startsWith(date);
+    });
+
+    const byIntensity = {};
+    const byTag = {};
+
+    movements.forEach(m => {
+      byIntensity[m.intensity] = (byIntensity[m.intensity] || 0) + 1;
+      byTag[m.tag] = (byTag[m.tag] || 0) + 1;
+    });
+
+    return {
+      total: movements.length,
+      last_time: movements.length > 0 ? movements[movements.length - 1].timestamp : null,
+      byIntensity: Object.entries(byIntensity).map(([intensity, count]) => ({ intensity, count })),
+      byTag: Object.entries(byTag).map(([tag, count]) => ({ tag, count }))
+        .sort((a, b) => b.count - a.count)
+    };
+  },
+
+  getDailyStats(days) {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    const cutoffStr = cutoffDate.toISOString();
+
+    const movements = db.data.movements.filter(m => m.timestamp >= cutoffStr);
+
+    // 按日期分组
+    const grouped = {};
+    movements.forEach(m => {
+      const date = m.timestamp.split('T')[0];
+      if (!grouped[date]) {
+        grouped[date] = [];
+      }
+      grouped[date].push(m);
+    });
+
+    // 转换为数组格式
+    const stats = Object.entries(grouped).map(([date, items]) => ({
+      date,
+      count: items.length,
+      tags: [...new Set(items.map(i => i.tag))].join(',')
+    }));
+
+    // 按日期倒序排序
+    stats.sort((a, b) => b.date.localeCompare(a.date));
+
+    return stats;
+  },
+
+  delete(id, userId) {
+    const index = db.data.movements.findIndex(m => m.id === id && m.user_id === userId);
+    if (index === -1) return null;
+
+    const movement = db.data.movements[index];
+    db.data.movements.splice(index, 1);
+    db.write();
+    return movement;
+  }
+};
+
+export default db;

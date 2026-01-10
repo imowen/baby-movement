@@ -1,0 +1,91 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gradient-to-br from-primary-50 via-warm-50 to-primary-100 min-h-screen;
+  }
+}
+
+@layer components {
+  /* 温馨按钮样式 */
+  .btn-primary {
+    @apply bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold py-3 px-6 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 active:scale-95;
+  }
+
+  .btn-secondary {
+    @apply bg-white text-primary-600 font-semibold py-2 px-5 rounded-full shadow hover:shadow-md transition-all duration-200;
+  }
+
+  /* 卡片样式 */
+  .card {
+    @apply bg-white/90 backdrop-blur-sm rounded-3xl shadow-soft p-6 transition-all duration-300;
+  }
+
+  .card-hover {
+    @apply hover:shadow-xl hover:scale-[1.02];
+  }
+
+  /* 输入框样式 */
+  .input-field {
+    @apply w-full px-4 py-3 rounded-2xl border-2 border-primary-200 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-200 transition-all duration-200;
+  }
+
+  /* 标签选择器 */
+  .tag-button {
+    @apply px-4 py-2 rounded-full border-2 border-primary-200 text-primary-700 font-medium transition-all duration-200 hover:bg-primary-50;
+  }
+
+  .tag-button-active {
+    @apply bg-primary-500 text-white border-primary-500;
+  }
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(251, 58, 139, 0.1);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(251, 58, 139, 0.3);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(251, 58, 139, 0.5);
+}
+
+/* 动画 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes pulse-soft {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.pulse-soft {
+  animation: pulse-soft 2s infinite;
+}
