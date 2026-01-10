@@ -1,0 +1,49 @@
+# 宝宝胎动记录应用 Caddy 配置
+#
+# 使用域名部署（推荐）- 自动 HTTPS
+# 将 baby.yourdomain.com 替换为你的实际域名
+baby.yourdomain.com {
+    # 反向代理到本地 Node.js 服务器
+    reverse_proxy localhost:3010
+
+    # 启用 Gzip 压缩
+    encode gzip
+
+    # 日志配置
+    log {
+        output file /var/log/caddy/baby-tracker.log {
+            roll_size 10mb
+            roll_keep 5
+        }
+        format json
+    }
+
+    # 请求头优化
+    header {
+        # 安全头
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+
+        # 移除服务器信息
+        -Server
+    }
+}
+
+# ==========================================
+# 使用 IP 访问（不推荐，无 HTTPS）
+# 取消下面的注释并注释掉上面的域名配置
+# ==========================================
+# http://your-vps-ip {
+#     reverse_proxy localhost:3010
+#     encode gzip
+# }
+
+# ==========================================
+# 使用多个域名（可选）
+# ==========================================
+# baby.yourdomain.com, www.baby.yourdomain.com {
+#     reverse_proxy localhost:3010
+#     encode gzip
+# }
