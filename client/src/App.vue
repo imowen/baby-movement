@@ -23,13 +23,14 @@
           <span class="text-xs font-medium">统计</span>
         </router-link>
 
-        <button
-          @click="handleLogout"
-          class="flex flex-col items-center gap-1 text-gray-400 hover:text-primary-500 transition-colors duration-200"
+        <router-link
+          to="/settings"
+          class="flex flex-col items-center gap-1 transition-colors duration-200"
+          :class="$route.path === '/settings' ? 'text-primary-500' : 'text-gray-400'"
         >
-          <span class="text-2xl">👋</span>
-          <span class="text-xs font-medium">退出</span>
-        </button>
+          <span class="text-2xl">⚙️</span>
+          <span class="text-xs font-medium">设置</span>
+        </router-link>
       </div>
     </nav>
   </div>
@@ -37,20 +38,11 @@
 
 <script setup>
 import { computed } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
+import { useRoute } from 'vue-router';
 
-const router = useRouter();
 const route = useRoute();
 
 const showNav = computed(() => {
   return route.path !== '/login';
 });
-
-const handleLogout = () => {
-  if (confirm('确定要退出登录吗？')) {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    router.push('/login');
-  }
-};
 </script>

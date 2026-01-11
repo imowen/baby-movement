@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import movementsRoutes from './routes/movements.js';
+import settingsRoutes from './routes/settings.js';
 
 dotenv.config();
 
@@ -16,6 +17,7 @@ app.use(express.json());
 // API 路由
 app.use('/api/auth', authRoutes);
 app.use('/api/movements', movementsRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // 健康检查
 app.get('/api/health', (req, res) => {

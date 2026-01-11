@@ -8,7 +8,10 @@ const __dirname = dirname(__filename);
 // 默认数据结构
 const defaultData = {
   users: [],
-  movements: []
+  movements: [],
+  settings: {
+    dueDate: null  // 预产期
+  }
 };
 
 // 初始化数据库
@@ -135,6 +138,22 @@ export const movementOperations = {
     db.data.movements.splice(index, 1);
     db.write();
     return movement;
+  }
+};
+
+// 设置相关操作
+export const settingsOperations = {
+  get() {
+    return db.data.settings || { dueDate: null };
+  },
+
+  setDueDate(dueDate) {
+    if (!db.data.settings) {
+      db.data.settings = {};
+    }
+    db.data.settings.dueDate = dueDate;
+    db.write();
+    return db.data.settings;
   }
 };
 

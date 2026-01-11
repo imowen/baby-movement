@@ -5,7 +5,11 @@
       <div class="flex items-center justify-between mb-4">
         <div>
           <h1 class="text-2xl font-bold text-primary-600">🤰 宝宝胎动记录</h1>
-          <p class="text-sm text-gray-500 mt-1">第21周 · {{ currentDate }}</p>
+          <p class="text-sm text-gray-500 mt-1">
+            <span v-if="pregnancyInfo">第{{ pregnancyInfo.weeks }}周{{ pregnancyInfo.days }}天</span>
+            <span v-else>未设置预产期</span>
+            · {{ currentDate }}
+          </p>
         </div>
         <div class="text-right">
           <div class="text-3xl font-bold text-primary-500">{{ todayStats.total }}</div>
@@ -214,6 +218,7 @@ const todayStats = ref({ total: 0, lastTime: null });
 const recentMovements = ref([]);
 const recordCount = ref(0); // 本次记录会话的次数
 const justRecorded = ref(false); // 刚刚记录成功的标记
+const settings = ref({ dueDate: null }); // 设置（预产期）
 
 // 强度和标签选项配置
 const intensityOptions = ref([
@@ -244,6 +249,31 @@ const currentDate = computed(() => {
     day: 'numeric',
     weekday: 'long'
   });
+});
+
+// 计算孕周信息
+const pregnancyInfo = computed(() => {
+  if (!settings.value.dueDate) return null;
+
+  const today = new Date();
+  const dueDate = new Date(settings.value.dueDate);
+
+  // 预产期通常是40周，280天
+  const conceptionDate = new Date(dueDate);
+  conceptionDate.setDate(conceptionDate.getDate() - 280);
+
+  // 计算从怀孕开始到现在的天数
+  const daysSinceConception = Math.floor((today - conceptionDate) / (1000 * 60 * 60 * 24));
+
+  // 计算周和天
+  const weeks = Math.floor(daysSinceConception / 7);
+  const days = daysSinceConception % 7;
+
+  return {
+    weeks,
+    days,
+    totalDays: daysSinceConception
+  };
 });
 
 const getAverageInterval = computed(() => {
@@ -299,6 +329,15 @@ const getTagEmoji = (tag) => {
     '其他': '✨'
   };
   return emojiMap[tag] || '✨';
+};
+
+const loadSettings = async () => {
+  try {
+    const data = await api.getSettings();
+    settings.value = data;
+  } catch (error) {
+    console.error('加载设置失败:', error);
+  }
 };
 
 const loadData = async () => {
@@ -363,6 +402,7 @@ const deleteMovement = async (id) => {
 };
 
 onMounted(() => {
+  loadSettings();
   loadData();
 });
 </script>

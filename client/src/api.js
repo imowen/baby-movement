@@ -58,5 +58,13 @@ export default {
   },
   getDailyStats(days = 30) {
     return api.get('/movements/daily-stats', { params: { days } });
+  },
+
+  // 设置
+  getSettings() {
+    return api.get('/settings');
+  },
+  setDueDate(dueDate) {
+    return api.post('/settings/due-date', { dueDate });
   }
 };
