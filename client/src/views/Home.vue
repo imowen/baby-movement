@@ -26,10 +26,10 @@
     <div class="card mb-6 fade-in text-center">
       <button
         @click="showRecordModal = true"
-        class="w-48 h-48 mx-auto bg-gradient-to-br from-primary-400 to-primary-600 rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 active:scale-95 flex flex-col items-center justify-center pulse-soft"
+        class="w-36 h-36 mx-auto bg-gradient-to-br from-primary-400 to-primary-600 rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 active:scale-95 flex flex-col items-center justify-center pulse-soft"
       >
-        <span class="text-6xl mb-2">👶</span>
-        <span class="text-white font-bold text-xl">感受到了</span>
+        <span class="text-5xl mb-1">👶</span>
+        <span class="text-white font-bold text-base">感受到了</span>
       </button>
       <p class="text-gray-500 text-sm mt-4">点击大按钮快速记录</p>
     </div>
@@ -86,31 +86,53 @@
         <p>还没有记录哦</p>
       </div>
 
-      <div v-else class="space-y-3">
-        <div
-          v-for="movement in recentMovements"
-          :key="movement.id"
-          class="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors"
-        >
-          <div class="text-2xl">{{ getIntensityEmoji(movement.intensity) }}</div>
-          <div class="flex-1">
+      <div v-else class="space-y-4">
+        <div v-for="group in groupedMovements" :key="group.dateKey">
+          <!-- 日期分组头 -->
+          <div
+            @click="toggleGroup(group.dateKey)"
+            class="flex items-center justify-between p-3 bg-gray-100 rounded-2xl cursor-pointer hover:bg-gray-200 transition-colors"
+          >
             <div class="flex items-center gap-2">
-              <span class="font-medium text-gray-700">{{ movement.tag }}</span>
-              <span class="text-xs px-2 py-1 rounded-full bg-primary-100 text-primary-700">
-                {{ movement.intensity }}
+              <span class="text-lg">📅</span>
+              <span class="font-medium text-gray-700">{{ group.dateLabel }}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-sm text-primary-600 font-medium">{{ group.movements.length }}次</span>
+              <span class="text-gray-400 transition-transform" :class="{ 'rotate-180': expandedGroups[group.dateKey] }">
+                ▼
               </span>
             </div>
-            <div class="text-xs text-gray-500 mt-1">
-              {{ formatDateTime(movement.timestamp) }}
-              <span v-if="movement.note" class="ml-2">· {{ movement.note }}</span>
+          </div>
+
+          <!-- 展开的记录列表 -->
+          <div v-if="expandedGroups[group.dateKey]" class="mt-2 space-y-2 pl-2">
+            <div
+              v-for="movement in group.movements"
+              :key="movement.id"
+              class="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors"
+            >
+              <div class="text-2xl">{{ getIntensityEmoji(movement.intensity) }}</div>
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="font-medium text-gray-700">{{ movement.tag }}</span>
+                  <span class="text-xs px-2 py-1 rounded-full bg-primary-100 text-primary-700">
+                    {{ movement.intensity }}
+                  </span>
+                </div>
+                <div class="text-xs text-gray-500 mt-1">
+                  {{ formatTime(movement.timestamp) }}
+                  <span v-if="movement.note" class="ml-2">· {{ movement.note }}</span>
+                </div>
+              </div>
+              <button
+                @click="deleteMovement(movement.id)"
+                class="text-gray-400 hover:text-red-500 transition-colors"
+              >
+                <span class="text-xl">🗑️</span>
+              </button>
             </div>
           </div>
-          <button
-            @click="deleteMovement(movement.id)"
-            class="text-gray-400 hover:text-red-500 transition-colors"
-          >
-            <span class="text-xl">🗑️</span>
-          </button>
         </div>
       </div>
     </div>
@@ -209,11 +231,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, reactive } from 'vue';
 import api from '../api.js';
 
 // 状态
 const showRecordModal = ref(false);
+const expandedGroups = reactive({});
 const todayStats = ref({ total: 0, lastTime: null });
 const recentMovements = ref([]);
 const recordCount = ref(0); // 本次记录会话的次数
@@ -346,6 +369,62 @@ const getTagEmoji = (tag) => {
   return emojiMap[tag] || '✨';
 };
 
+// 按日期分组的记录
+const groupedMovements = computed(() => {
+  if (recentMovements.value.length === 0) return [];
+
+  const groups = {};
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  recentMovements.value.forEach(m => {
+    const date = new Date(m.timestamp);
+    const dateKey = date.toISOString().split('T')[0];
+
+    if (!groups[dateKey]) {
+      groups[dateKey] = [];
+    }
+    groups[dateKey].push(m);
+  });
+
+  return Object.entries(groups)
+    .map(([dateKey, movements]) => {
+      const date = new Date(dateKey + 'T00:00:00');
+      let dateLabel;
+
+      if (date.toDateString() === today.toDateString()) {
+        dateLabel = '今天';
+      } else if (date.toDateString() === yesterday.toDateString()) {
+        dateLabel = '昨天';
+      } else {
+        dateLabel = date.toLocaleDateString('zh-CN', {
+          month: 'long',
+          day: 'numeric',
+          weekday: 'long'
+        });
+      }
+
+      return {
+        dateKey,
+        dateLabel,
+        movements: movements.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      };
+    })
+    .sort((a, b) => new Date(b.dateKey) - new Date(a.dateKey));
+});
+
+const toggleGroup = (dateKey) => {
+  expandedGroups[dateKey] = !expandedGroups[dateKey];
+};
+
+// 初始化展开状态（默认展开第一个分组）
+const initExpandedGroups = () => {
+  if (groupedMovements.value.length > 0) {
+    expandedGroups[groupedMovements.value[0].dateKey] = true;
+  }
+};
+
 const loadSettings = async () => {
   try {
     const data = await api.getSettings();
@@ -357,13 +436,31 @@ const loadSettings = async () => {
 
 const loadData = async () => {
   try {
+    // 计算最近3天的日期范围
+    const endDate = new Date();
+    endDate.setHours(23, 59, 59, 999);
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 2); // 今天 + 前2天 = 3天
+    startDate.setHours(0, 0, 0, 0);
+
     const [stats, movements] = await Promise.all([
       api.getTodayStats(),
-      api.getMovements({ limit: 10 })
+      api.getMovements({
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        limit: 100
+      })
     ]);
 
     todayStats.value = stats;
     recentMovements.value = movements;
+
+    // 初始化展开状态
+    setTimeout(() => {
+      if (groupedMovements.value.length > 0 && Object.keys(expandedGroups).length === 0) {
+        expandedGroups[groupedMovements.value[0].dateKey] = true;
+      }
+    }, 0);
   } catch (error) {
     console.error('加载数据失败:', error);
   }
