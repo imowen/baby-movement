@@ -44,7 +44,7 @@ bash deploy-to-vps.sh
 
 # 3. 检查应用状态
 pm2 status
-pm2 logs baby-tracker
+pm2 logs baby-movement
 ```
 
 ### 方式二：手动部署
@@ -73,13 +73,13 @@ nano .env
 sudo npm install -g pm2
 
 # 6. 启动应用
-pm2 start server/server.js --name baby-tracker
+pm2 start server/server.js --name baby-movement
 pm2 save
 pm2 startup
 
 # 7. 查看状态
 pm2 status
-pm2 logs baby-tracker
+pm2 logs baby-movement
 ```
 
 ---
@@ -132,7 +132,7 @@ sudo systemctl reload caddy
 sudo journalctl -u caddy -f
 
 # 查看应用日志
-sudo tail -f /var/log/caddy/baby-tracker.log
+sudo tail -f /var/log/caddy/baby-movement.log
 ```
 
 ---
@@ -175,10 +175,10 @@ git pull
 npm run build
 
 # 重启应用
-pm2 restart baby-tracker
+pm2 restart baby-movement
 
 # 查看日志确认
-pm2 logs baby-tracker --lines 50
+pm2 logs baby-movement --lines 50
 ```
 
 ### 自动更新脚本（可选）
@@ -186,7 +186,7 @@ pm2 logs baby-tracker --lines 50
 创建更新脚本：
 
 ```bash
-nano ~/update-baby-tracker.sh
+nano ~/update-baby-movement.sh
 ```
 
 内容：
@@ -197,20 +197,20 @@ cd ~/baby-movement
 git pull
 npm install  # 如果有新依赖
 npm run build
-pm2 restart baby-tracker
+pm2 restart baby-movement
 echo "✅ 更新完成！"
 ```
 
 设置权限：
 
 ```bash
-chmod +x ~/update-baby-tracker.sh
+chmod +x ~/update-baby-movement.sh
 ```
 
 使用：
 
 ```bash
-bash ~/update-baby-tracker.sh
+bash ~/update-baby-movement.sh
 ```
 
 ---
@@ -256,16 +256,16 @@ crontab -e
 pm2 monit
 
 # 查看详细信息
-pm2 show baby-tracker
+pm2 show baby-movement
 
 # 查看日志
-pm2 logs baby-tracker
+pm2 logs baby-movement
 
 # 重启应用
-pm2 restart baby-tracker
+pm2 restart baby-movement
 
 # 停止应用
-pm2 stop baby-tracker
+pm2 stop baby-movement
 ```
 
 ### 系统资源监控
@@ -322,7 +322,7 @@ sudo journalctl -u caddy -n 100
 
 ```bash
 # 查看 PM2 日志
-pm2 logs baby-tracker --err
+pm2 logs baby-movement --err
 
 # 检查端口是否被占用
 sudo lsof -i :3010
@@ -356,7 +356,7 @@ ls -la dist/
 
 # 重新构建
 npm run build
-pm2 restart baby-tracker
+pm2 restart baby-movement
 ```
 
 ---
@@ -386,8 +386,8 @@ baby.yourdomain.com {
 如果流量大，可以启用集群：
 
 ```bash
-pm2 delete baby-tracker
-pm2 start server/server.js --name baby-tracker -i 2
+pm2 delete baby-movement
+pm2 start server/server.js --name baby-movement -i 2
 pm2 save
 ```
 
@@ -415,7 +415,7 @@ sudo ufw allow 443   # HTTPS
 4. **监控应用日志**
 
 ```bash
-pm2 logs baby-tracker
+pm2 logs baby-movement
 ```
 
 5. **更改默认 SSH 端口**（可选）
@@ -426,7 +426,7 @@ pm2 logs baby-tracker
 
 ```bash
 # 停止应用
-pm2 delete baby-tracker
+pm2 delete baby-movement
 pm2 save
 
 # 删除代码
