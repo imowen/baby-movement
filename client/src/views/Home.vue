@@ -101,7 +101,7 @@
               </span>
             </div>
             <div class="text-xs text-gray-500 mt-1">
-              {{ formatTime(movement.timestamp) }}
+              {{ formatDateTime(movement.timestamp) }}
               <span v-if="movement.note" class="ml-2">· {{ movement.note }}</span>
             </div>
           </div>
@@ -308,6 +308,21 @@ const getAverageInterval = computed(() => {
 const formatTime = (timestamp) => {
   const date = new Date(timestamp);
   return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+};
+
+const formatDateTime = (timestamp) => {
+  const date = new Date(timestamp);
+  const today = new Date();
+  const isToday = date.toDateString() === today.toDateString();
+
+  const time = date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+
+  if (isToday) {
+    return `今天 ${time}`;
+  }
+
+  const dateStr = date.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
+  return `${dateStr} ${time}`;
 };
 
 const getIntensityEmoji = (intensity) => {
