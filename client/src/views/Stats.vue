@@ -6,16 +6,23 @@
       <p class="text-sm text-gray-500">了解宝宝的活动规律</p>
     </header>
 
-    <!-- 周期选择 -->
-    <div class="flex gap-2 mb-6">
+    <!-- 统一时间选择器 -->
+    <div class="flex flex-wrap gap-2 mb-6">
       <button
         v-for="option in periodOptions"
         :key="option.value"
-        @click="selectedPeriod = option.value"
-        class="tag-button flex-1"
+        @click="selectPeriod(option.value)"
+        class="tag-button"
         :class="{ 'tag-button-active': selectedPeriod === option.value }"
       >
         {{ option.label }}
+      </button>
+      <button
+        @click="showCustomModal = true"
+        class="tag-button"
+        :class="{ 'tag-button-active': selectedPeriod === 'custom' }"
+      >
+        {{ customRangeLabel }}
       </button>
     </div>
 
@@ -31,113 +38,50 @@
       </div>
     </div>
 
-    <!-- 图表区域 -->
-    <div class="card mb-6 fade-in">
+    <!-- 图表区域（多日时显示趋势图） -->
+    <div v-if="!isSingleDay && chartData" class="card mb-6 fade-in">
       <h3 class="font-semibold text-gray-700 mb-4">每日胎动趋势</h3>
       <div class="h-64">
-        <Line v-if="chartData" :data="chartData" :options="chartOptions" />
-        <div v-else class="flex items-center justify-center h-full text-gray-400">
-          暂无数据
-        </div>
+        <Line :data="chartData" :options="chartOptions" />
       </div>
     </div>
 
-    <!-- 按日期查看记录 -->
-    <div class="card mb-6 fade-in">
-      <h3 class="font-semibold text-gray-700 mb-4">查看某日记录 📅</h3>
-
-      <!-- 日期选择器 -->
-      <div class="mb-4">
-        <input
-          type="date"
-          v-model="selectedDate"
-          :max="today"
-          class="input-field text-center"
-        />
+    <!-- 单日时显示小时分布 -->
+    <div v-if="isSingleDay && hourlyData.length > 0" class="card mb-6 fade-in">
+      <h3 class="font-semibold text-gray-700 mb-4">小时分布</h3>
+      <div class="h-48">
+        <Bar :data="hourlyChartData" :options="hourlyChartOptions" />
       </div>
+    </div>
 
-      <!-- 选中日期的记录列表 -->
-      <div v-if="selectedDate">
-        <!-- 日期统计 -->
-        <div v-if="selectedDateMovements.length > 0" class="space-y-4 mb-4">
-          <!-- 总次数卡片 -->
-          <div class="bg-primary-50 rounded-2xl p-4">
-            <div class="flex items-center justify-between">
-              <div>
-                <div class="text-sm text-gray-600">{{ formatSelectedDate }}</div>
-                <div class="text-2xl font-bold text-primary-600 mt-1">
-                  共 {{ selectedDateMovements.length }} 次胎动
-                </div>
-              </div>
-              <div class="text-4xl">👶</div>
-            </div>
-          </div>
-
-          <!-- 时段分布卡片 -->
-          <div class="bg-white rounded-2xl p-4 shadow-soft">
-            <h4 class="text-sm font-semibold text-gray-700 mb-3">时段分布</h4>
-            <div class="grid grid-cols-3 gap-3">
-              <div class="text-center">
-                <div class="text-3xl mb-1">🌅</div>
-                <div class="text-xs text-gray-600 mb-1">上午</div>
-                <div class="text-xl font-bold text-primary-600">{{ selectedDateTimeStats.morning }}</div>
-                <div class="text-xs text-gray-500">次</div>
-              </div>
-              <div class="text-center">
-                <div class="text-3xl mb-1">☀️</div>
-                <div class="text-xs text-gray-600 mb-1">下午</div>
-                <div class="text-xl font-bold text-warm-600">{{ selectedDateTimeStats.afternoon }}</div>
-                <div class="text-xs text-gray-500">次</div>
-              </div>
-              <div class="text-center">
-                <div class="text-3xl mb-1">🌙</div>
-                <div class="text-xs text-gray-600 mb-1">晚上</div>
-                <div class="text-xl font-bold text-primary-600">{{ selectedDateTimeStats.evening }}</div>
-                <div class="text-xs text-gray-500">次</div>
-              </div>
-            </div>
-          </div>
+    <!-- 时段分布 -->
+    <div v-if="allMovements.length > 0" class="card mb-6 fade-in">
+      <h3 class="font-semibold text-gray-700 mb-4">时段分布 🕐</h3>
+      <div class="grid grid-cols-3 gap-3">
+        <div class="text-center bg-primary-50 rounded-2xl p-3">
+          <div class="text-3xl mb-1">🌅</div>
+          <div class="text-xs text-gray-600 mb-1">上午</div>
+          <div class="text-xl font-bold text-primary-600">{{ timeStats.morning }}</div>
+          <div class="text-xs text-gray-500">次</div>
         </div>
-
-        <!-- 记录详情 -->
-        <div v-if="selectedDateMovements.length === 0" class="text-center py-8 text-gray-400">
-          <div class="text-4xl mb-2">💭</div>
-          <p>{{ formatSelectedDate }}暂无记录</p>
+        <div class="text-center bg-warm-50 rounded-2xl p-3">
+          <div class="text-3xl mb-1">☀️</div>
+          <div class="text-xs text-gray-600 mb-1">下午</div>
+          <div class="text-xl font-bold text-warm-600">{{ timeStats.afternoon }}</div>
+          <div class="text-xs text-gray-500">次</div>
         </div>
-
-        <div v-else class="space-y-3">
-          <div
-            v-for="movement in selectedDateMovements"
-            :key="movement.id"
-            class="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl"
-          >
-            <div class="text-2xl">{{ getIntensityEmoji(movement.intensity) }}</div>
-            <div class="flex-1">
-              <div class="flex items-center gap-2">
-                <span class="font-medium text-gray-700">{{ movement.tag }}</span>
-                <span class="text-xs px-2 py-1 rounded-full bg-primary-100 text-primary-700">
-                  {{ movement.intensity }}
-                </span>
-              </div>
-              <div class="text-xs text-gray-500 mt-1">
-                {{ formatTime(movement.timestamp) }}
-                <span v-if="movement.note" class="ml-2">· {{ movement.note }}</span>
-              </div>
-            </div>
-            <div class="text-2xl">{{ getTagEmoji(movement.tag) }}</div>
-          </div>
+        <div class="text-center bg-primary-50 rounded-2xl p-3">
+          <div class="text-3xl mb-1">🌙</div>
+          <div class="text-xs text-gray-600 mb-1">晚上</div>
+          <div class="text-xl font-bold text-primary-600">{{ timeStats.evening }}</div>
+          <div class="text-xs text-gray-500">次</div>
         </div>
-      </div>
-
-      <div v-else class="text-center py-8 text-gray-400">
-        <div class="text-4xl mb-2">📅</div>
-        <p>选择日期查看当天记录</p>
       </div>
     </div>
 
     <!-- 强度分布 -->
-    <div class="card mb-6 fade-in">
-      <h3 class="font-semibold text-gray-700 mb-4">强度分布</h3>
+    <div v-if="intensityDistribution.length > 0" class="card mb-6 fade-in">
+      <h3 class="font-semibold text-gray-700 mb-4">强度分布 💪</h3>
       <div class="space-y-3">
         <div
           v-for="item in intensityDistribution"
@@ -162,8 +106,8 @@
     </div>
 
     <!-- 类型分布 -->
-    <div class="card fade-in">
-      <h3 class="font-semibold text-gray-700 mb-4">类型分布</h3>
+    <div v-if="tagDistribution.length > 0" class="card mb-6 fade-in">
+      <h3 class="font-semibold text-gray-700 mb-4">类型分布 🏷️</h3>
       <div class="grid grid-cols-2 gap-3">
         <div
           v-for="item in tagDistribution"
@@ -176,18 +120,123 @@
         </div>
       </div>
     </div>
+
+    <!-- 记录详情（按日期分组） -->
+    <div class="card fade-in">
+      <h3 class="font-semibold text-gray-700 mb-4">记录详情 📝</h3>
+
+      <div v-if="allMovements.length === 0" class="text-center py-8 text-gray-400">
+        <div class="text-4xl mb-2">💭</div>
+        <p>{{ periodLabel }}暂无记录</p>
+      </div>
+
+      <div v-else class="space-y-4">
+        <div v-for="group in groupedMovements" :key="group.date">
+          <!-- 日期分组头 -->
+          <div
+            @click="toggleGroup(group.date)"
+            class="flex items-center justify-between p-3 bg-gray-100 rounded-2xl cursor-pointer hover:bg-gray-200 transition-colors"
+          >
+            <div class="flex items-center gap-2">
+              <span class="text-lg">📅</span>
+              <span class="font-medium text-gray-700">{{ group.dateLabel }}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-sm text-primary-600 font-medium">{{ group.movements.length }}次</span>
+              <span class="text-gray-400 transition-transform" :class="{ 'rotate-180': expandedGroups[group.date] }">
+                ▼
+              </span>
+            </div>
+          </div>
+
+          <!-- 展开的记录列表 -->
+          <div v-if="expandedGroups[group.date]" class="mt-2 space-y-2 pl-2">
+            <div
+              v-for="movement in group.movements"
+              :key="movement.id"
+              class="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl"
+            >
+              <div class="text-2xl">{{ getIntensityEmoji(movement.intensity) }}</div>
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="font-medium text-gray-700">{{ movement.tag }}</span>
+                  <span class="text-xs px-2 py-1 rounded-full bg-primary-100 text-primary-700">
+                    {{ movement.intensity }}
+                  </span>
+                </div>
+                <div class="text-xs text-gray-500 mt-1">
+                  {{ formatTime(movement.timestamp) }}
+                  <span v-if="movement.note" class="ml-2">· {{ movement.note }}</span>
+                </div>
+              </div>
+              <div class="text-2xl">{{ getTagEmoji(movement.tag) }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 自定义日期范围弹窗 -->
+    <div
+      v-if="showCustomModal"
+      class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      @click.self="showCustomModal = false"
+    >
+      <div class="card max-w-sm w-full fade-in">
+        <h2 class="text-xl font-bold text-primary-600 mb-4">选择日期范围 📅</h2>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">开始日期</label>
+            <input
+              type="date"
+              v-model="customStartDate"
+              :max="today"
+              class="input-field"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">结束日期</label>
+            <input
+              type="date"
+              v-model="customEndDate"
+              :max="today"
+              class="input-field"
+            />
+          </div>
+        </div>
+
+        <div class="flex gap-3 mt-6">
+          <button
+            @click="showCustomModal = false"
+            class="btn-secondary flex-1"
+          >
+            取消
+          </button>
+          <button
+            @click="applyCustomRange"
+            :disabled="!customStartDate || !customEndDate"
+            class="btn-primary flex-1 disabled:opacity-50"
+          >
+            确定
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
-import { Line } from 'vue-chartjs';
+import { ref, computed, onMounted, watch, reactive } from 'vue';
+import { Line, Bar } from 'vue-chartjs';
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend,
@@ -201,6 +250,7 @@ ChartJS.register(
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend,
@@ -208,13 +258,19 @@ ChartJS.register(
 );
 
 // 状态
-const selectedPeriod = ref(7);
+const selectedPeriod = ref('today');
 const dailyStats = ref([]);
 const allMovements = ref([]);
-const selectedDate = ref(''); // 选中的日期
-const selectedDateMovements = ref([]); // 选中日期的记录
+const showCustomModal = ref(false);
+const customStartDate = ref('');
+const customEndDate = ref('');
+const appliedCustomStart = ref('');
+const appliedCustomEnd = ref('');
+const expandedGroups = reactive({});
 
 const periodOptions = [
+  { value: 'today', label: '今天' },
+  { value: 'yesterday', label: '昨天' },
   { value: 7, label: '7天' },
   { value: 14, label: '14天' },
   { value: 30, label: '30天' }
@@ -236,50 +292,132 @@ const tagEmojiMap = {
   '其他': '✨'
 };
 
-// 计算属性
+// 今天的日期
+const today = computed(() => {
+  return new Date().toISOString().split('T')[0];
+});
+
+// 是否是单日查看
+const isSingleDay = computed(() => {
+  return selectedPeriod.value === 'today' ||
+         selectedPeriod.value === 'yesterday' ||
+         (selectedPeriod.value === 'custom' && appliedCustomStart.value === appliedCustomEnd.value);
+});
+
+// 自定义按钮标签
+const customRangeLabel = computed(() => {
+  if (selectedPeriod.value === 'custom' && appliedCustomStart.value && appliedCustomEnd.value) {
+    const start = formatDateShort(appliedCustomStart.value);
+    const end = formatDateShort(appliedCustomEnd.value);
+    if (appliedCustomStart.value === appliedCustomEnd.value) {
+      return start;
+    }
+    return `${start}-${end}`;
+  }
+  return '自定义';
+});
+
+// 当前选择的时间范围描述
+const periodLabel = computed(() => {
+  if (selectedPeriod.value === 'today') return '今天';
+  if (selectedPeriod.value === 'yesterday') return '昨天';
+  if (selectedPeriod.value === 'custom') {
+    if (appliedCustomStart.value === appliedCustomEnd.value) {
+      return formatDateLong(appliedCustomStart.value);
+    }
+    return `${formatDateShort(appliedCustomStart.value)} - ${formatDateShort(appliedCustomEnd.value)}`;
+  }
+  return `最近${selectedPeriod.value}天`;
+});
+
+// 计算日期范围
+const dateRange = computed(() => {
+  const endDate = new Date();
+  endDate.setHours(23, 59, 59, 999);
+  let startDate = new Date();
+  startDate.setHours(0, 0, 0, 0);
+
+  if (selectedPeriod.value === 'today') {
+    // 今天
+  } else if (selectedPeriod.value === 'yesterday') {
+    startDate.setDate(startDate.getDate() - 1);
+    endDate.setDate(endDate.getDate() - 1);
+  } else if (selectedPeriod.value === 'custom') {
+    startDate = new Date(appliedCustomStart.value + 'T00:00:00');
+    endDate = new Date(appliedCustomEnd.value + 'T23:59:59');
+  } else {
+    startDate.setDate(startDate.getDate() - selectedPeriod.value + 1);
+  }
+
+  return { startDate, endDate };
+});
+
+// 总体统计
 const overallStats = computed(() => {
-  const total = dailyStats.value.reduce((sum, day) => sum + day.count, 0);
-  const days = dailyStats.value.length || 1;
+  const total = allMovements.value.length;
+
+  // 计算实际天数
+  const { startDate, endDate } = dateRange.value;
+  const days = Math.max(1, Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)));
+
   return {
     total,
-    avgPerDay: Math.round(total / days)
+    avgPerDay: days > 0 ? Math.round(total / days) : 0
   };
 });
 
-const chartData = computed(() => {
-  if (dailyStats.value.length === 0) return null;
+// 时段统计
+const timeStats = computed(() => {
+  const stats = { morning: 0, afternoon: 0, evening: 0 };
 
-  const labels = dailyStats.value.map(item => {
-    const date = new Date(item.date);
-    return `${date.getMonth() + 1}/${date.getDate()}`;
-  }).reverse();
+  allMovements.value.forEach(m => {
+    const hour = new Date(m.timestamp).getHours();
+    if (hour >= 0 && hour < 12) stats.morning++;
+    else if (hour >= 12 && hour < 18) stats.afternoon++;
+    else stats.evening++;
+  });
 
-  const data = dailyStats.value.map(item => item.count).reverse();
+  return stats;
+});
+
+// 小时分布数据（单日用）
+const hourlyData = computed(() => {
+  if (!isSingleDay.value) return [];
+
+  const hourCounts = new Array(24).fill(0);
+  allMovements.value.forEach(m => {
+    const hour = new Date(m.timestamp).getHours();
+    hourCounts[hour]++;
+  });
+
+  return hourCounts;
+});
+
+// 小时分布图表数据
+const hourlyChartData = computed(() => {
+  const labels = [];
+  for (let i = 0; i < 24; i++) {
+    labels.push(`${i}:00`);
+  }
 
   return {
     labels,
-    datasets: [
-      {
-        label: '胎动次数',
-        data,
-        borderColor: 'rgb(251, 58, 139)',
-        backgroundColor: 'rgba(251, 58, 139, 0.1)',
-        tension: 0.4,
-        fill: true,
-        pointRadius: 4,
-        pointHoverRadius: 6
-      }
-    ]
+    datasets: [{
+      label: '胎动次数',
+      data: hourlyData.value,
+      backgroundColor: 'rgba(251, 58, 139, 0.6)',
+      borderColor: 'rgb(251, 58, 139)',
+      borderWidth: 1,
+      borderRadius: 4
+    }]
   };
 });
 
-const chartOptions = {
+const hourlyChartOptions = {
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
-    legend: {
-      display: false
-    },
+    legend: { display: false },
     tooltip: {
       backgroundColor: 'rgba(0, 0, 0, 0.8)',
       padding: 12,
@@ -292,13 +430,68 @@ const chartOptions = {
   scales: {
     y: {
       beginAtZero: true,
+      ticks: { stepSize: 1 }
+    },
+    x: {
       ticks: {
-        stepSize: 1
+        maxTicksLimit: 8,
+        callback: function(val, index) {
+          return index % 3 === 0 ? this.getLabelForValue(val) : '';
+        }
       }
     }
   }
 };
 
+// 趋势图表数据
+const chartData = computed(() => {
+  if (dailyStats.value.length === 0 || isSingleDay.value) return null;
+
+  const labels = dailyStats.value.map(item => {
+    const date = new Date(item.date);
+    return `${date.getMonth() + 1}/${date.getDate()}`;
+  }).reverse();
+
+  const data = dailyStats.value.map(item => item.count).reverse();
+
+  return {
+    labels,
+    datasets: [{
+      label: '胎动次数',
+      data,
+      borderColor: 'rgb(251, 58, 139)',
+      backgroundColor: 'rgba(251, 58, 139, 0.1)',
+      tension: 0.4,
+      fill: true,
+      pointRadius: 4,
+      pointHoverRadius: 6
+    }]
+  };
+});
+
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      padding: 12,
+      cornerRadius: 8,
+      callbacks: {
+        label: (context) => `${context.parsed.y} 次`
+      }
+    }
+  },
+  scales: {
+    y: {
+      beginAtZero: true,
+      ticks: { stepSize: 1 }
+    }
+  }
+};
+
+// 强度分布
 const intensityDistribution = computed(() => {
   if (allMovements.value.length === 0) return [];
 
@@ -315,6 +508,7 @@ const intensityDistribution = computed(() => {
   })).sort((a, b) => b.count - a.count);
 });
 
+// 类型分布
 const tagDistribution = computed(() => {
   if (allMovements.value.length === 0) return [];
 
@@ -329,120 +523,123 @@ const tagDistribution = computed(() => {
   })).sort((a, b) => b.count - a.count);
 });
 
-// 选中日期的时段统计
-const selectedDateTimeStats = computed(() => {
-  if (selectedDateMovements.value.length === 0) {
-    return { morning: 0, afternoon: 0, evening: 0 };
-  }
+// 按日期分组的记录
+const groupedMovements = computed(() => {
+  if (allMovements.value.length === 0) return [];
 
-  const stats = {
-    morning: 0,    // 上午 0:00-12:00
-    afternoon: 0,  // 下午 12:00-18:00
-    evening: 0     // 晚上 18:00-24:00
-  };
+  const groups = {};
 
-  selectedDateMovements.value.forEach(movement => {
-    const date = new Date(movement.timestamp);
-    const hour = date.getHours();
-
-    if (hour >= 0 && hour < 12) {
-      stats.morning++;
-    } else if (hour >= 12 && hour < 18) {
-      stats.afternoon++;
-    } else {
-      stats.evening++;
+  allMovements.value.forEach(m => {
+    const date = new Date(m.timestamp).toISOString().split('T')[0];
+    if (!groups[date]) {
+      groups[date] = [];
     }
+    groups[date].push(m);
   });
 
-  return stats;
-});
-
-// 今天的日期（用于日期选择器的max）
-const today = computed(() => {
-  return new Date().toISOString().split('T')[0];
-});
-
-// 格式化选中的日期
-const formatSelectedDate = computed(() => {
-  if (!selectedDate.value) return '';
-  const date = new Date(selectedDate.value + 'T00:00:00');
-  return date.toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    weekday: 'long'
-  });
+  // 转换为数组并排序（最新的在前）
+  return Object.entries(groups)
+    .map(([date, movements]) => ({
+      date,
+      dateLabel: formatDateLong(date),
+      movements: movements.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+    }))
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
 });
 
 // 方法
-const getIntensityEmoji = (intensity) => {
-  return intensityEmojiMap[intensity] || '👶';
-};
-
-const getTagEmoji = (tag) => {
-  return tagEmojiMap[tag] || '✨';
-};
+const getIntensityEmoji = (intensity) => intensityEmojiMap[intensity] || '👶';
+const getTagEmoji = (tag) => tagEmojiMap[tag] || '✨';
 
 const formatTime = (timestamp) => {
   const date = new Date(timestamp);
   return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
 };
 
+const formatDateShort = (dateStr) => {
+  const date = new Date(dateStr + 'T00:00:00');
+  return `${date.getMonth() + 1}/${date.getDate()}`;
+};
+
+const formatDateLong = (dateStr) => {
+  const date = new Date(dateStr + 'T00:00:00');
+  return date.toLocaleDateString('zh-CN', {
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long'
+  });
+};
+
+const selectPeriod = (period) => {
+  selectedPeriod.value = period;
+  // 重置展开状态
+  Object.keys(expandedGroups).forEach(key => delete expandedGroups[key]);
+  // 默认展开第一个分组
+  setTimeout(() => {
+    if (groupedMovements.value.length > 0) {
+      expandedGroups[groupedMovements.value[0].date] = true;
+    }
+  }, 100);
+};
+
+const applyCustomRange = () => {
+  if (!customStartDate.value || !customEndDate.value) return;
+
+  // 确保开始日期不晚于结束日期
+  if (customStartDate.value > customEndDate.value) {
+    [customStartDate.value, customEndDate.value] = [customEndDate.value, customStartDate.value];
+  }
+
+  appliedCustomStart.value = customStartDate.value;
+  appliedCustomEnd.value = customEndDate.value;
+  selectedPeriod.value = 'custom';
+  showCustomModal.value = false;
+
+  // 重置展开状态
+  Object.keys(expandedGroups).forEach(key => delete expandedGroups[key]);
+};
+
+const toggleGroup = (date) => {
+  expandedGroups[date] = !expandedGroups[date];
+};
+
 const loadData = async () => {
   try {
+    const { startDate, endDate } = dateRange.value;
+
+    // 计算天数用于获取每日统计
+    const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+
     const [stats, movements] = await Promise.all([
-      api.getDailyStats(selectedPeriod.value),
-      api.getMovements({ limit: 1000 })
+      api.getDailyStats(days),
+      api.getMovements({
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        limit: 1000
+      })
     ]);
 
     dailyStats.value = stats;
+    allMovements.value = movements;
 
-    // 筛选指定时期内的记录
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - selectedPeriod.value);
-    allMovements.value = movements.filter(m =>
-      new Date(m.timestamp) >= cutoffDate
-    );
+    // 默认展开第一个分组
+    if (groupedMovements.value.length > 0 && Object.keys(expandedGroups).length === 0) {
+      expandedGroups[groupedMovements.value[0].date] = true;
+    }
   } catch (error) {
     console.error('加载统计数据失败:', error);
   }
 };
 
-// 加载选中日期的记录
-const loadSelectedDateMovements = async () => {
-  if (!selectedDate.value) {
-    selectedDateMovements.value = [];
-    return;
-  }
-
-  try {
-    const startDate = selectedDate.value + 'T00:00:00';
-    const endDate = selectedDate.value + 'T23:59:59';
-
-    const movements = await api.getMovements({
-      startDate,
-      endDate,
-      limit: 100
-    });
-
-    selectedDateMovements.value = movements;
-  } catch (error) {
-    console.error('加载日期记录失败:', error);
-    selectedDateMovements.value = [];
-  }
-};
-
-// 监听周期变化
-watch(selectedPeriod, () => {
+// 监听时间范围变化
+watch([selectedPeriod, appliedCustomStart, appliedCustomEnd], () => {
   loadData();
-});
-
-// 监听日期选择变化
-watch(selectedDate, () => {
-  loadSelectedDateMovements();
-});
+}, { immediate: false });
 
 onMounted(() => {
+  // 初始化自定义日期为今天
+  customStartDate.value = today.value;
+  customEndDate.value = today.value;
   loadData();
 });
 </script>
