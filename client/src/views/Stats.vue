@@ -139,7 +139,12 @@
           >
             <div class="flex items-center gap-2">
               <span class="text-lg">📅</span>
-              <span class="font-medium text-gray-700">{{ group.dateLabel }}</span>
+              <div>
+                <div class="font-medium text-gray-700">{{ group.dateLabel }}</div>
+                <div v-if="getPregnancyWeekForDate(group.date)" class="text-xs text-gray-500">
+                  {{ getPregnancyWeekForDate(group.date) }}
+                </div>
+              </div>
             </div>
             <div class="flex items-center gap-2">
               <span class="text-sm text-primary-600 font-medium">{{ group.movements.length }}次</span>
@@ -228,7 +233,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, reactive } from 'vue';
+import { ref, computed, onMounted, watch, reactive, nextTick } from 'vue';
 import { Line, Bar } from 'vue-chartjs';
 import {
   Chart as ChartJS,
@@ -267,6 +272,7 @@ const customEndDate = ref('');
 const appliedCustomStart = ref('');
 const appliedCustomEnd = ref('');
 const expandedGroups = reactive({});
+const settings = ref({ dueDate: null });
 
 const periodOptions = [
   { value: 'today', label: '今天' },
@@ -332,7 +338,7 @@ const periodLabel = computed(() => {
 
 // 计算日期范围
 const dateRange = computed(() => {
-  const endDate = new Date();
+  let endDate = new Date();
   endDate.setHours(23, 59, 59, 999);
   let startDate = new Date();
   startDate.setHours(0, 0, 0, 0);
@@ -343,8 +349,24 @@ const dateRange = computed(() => {
     startDate.setDate(startDate.getDate() - 1);
     endDate.setDate(endDate.getDate() - 1);
   } else if (selectedPeriod.value === 'custom') {
-    startDate = new Date(appliedCustomStart.value + 'T00:00:00');
-    endDate = new Date(appliedCustomEnd.value + 'T23:59:59');
+    // 验证自定义日期是否有效
+    if (appliedCustomStart.value && appliedCustomEnd.value) {
+      startDate = new Date(appliedCustomStart.value + 'T00:00:00');
+      endDate = new Date(appliedCustomEnd.value + 'T23:59:59');
+
+      // 验证日期对象是否有效
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        console.error('Invalid custom dates:', {
+          start: appliedCustomStart.value,
+          end: appliedCustomEnd.value
+        });
+        // 回退到今天
+        startDate = new Date();
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date();
+        endDate.setHours(23, 59, 59, 999);
+      }
+    }
   } else {
     startDate.setDate(startDate.getDate() - selectedPeriod.value + 1);
   }
@@ -570,6 +592,33 @@ const formatDateLong = (dateStr) => {
   });
 };
 
+// 计算特定日期的孕周期
+const getPregnancyWeekForDate = (dateKey) => {
+  if (!settings.value.dueDate) return null;
+
+  const targetDate = new Date(dateKey + 'T00:00:00');
+  targetDate.setHours(0, 0, 0, 0);
+
+  const dueDate = new Date(settings.value.dueDate);
+  dueDate.setHours(0, 0, 0, 0);
+
+  // 预产期通常是40周，280天
+  const conceptionDate = new Date(dueDate);
+  conceptionDate.setDate(conceptionDate.getDate() - 280);
+  conceptionDate.setHours(0, 0, 0, 0);
+
+  // 计算从怀孕开始到目标日期的天数
+  const daysSinceConception = Math.round((targetDate - conceptionDate) / (1000 * 60 * 60 * 24));
+
+  // 计算周和天
+  const weeks = Math.floor(daysSinceConception / 7);
+  const days = daysSinceConception % 7;
+
+  if (weeks < 0) return null; // 如果日期在怀孕之前
+
+  return `孕${weeks}周${days > 0 ? days + '天' : ''}`;
+};
+
 const selectPeriod = (period) => {
   selectedPeriod.value = period;
   // 重置展开状态
@@ -582,7 +631,7 @@ const selectPeriod = (period) => {
   }, 100);
 };
 
-const applyCustomRange = () => {
+const applyCustomRange = async () => {
   if (!customStartDate.value || !customEndDate.value) return;
 
   // 确保开始日期不晚于结束日期
@@ -590,13 +639,46 @@ const applyCustomRange = () => {
     [customStartDate.value, customEndDate.value] = [customEndDate.value, customStartDate.value];
   }
 
-  appliedCustomStart.value = customStartDate.value;
-  appliedCustomEnd.value = customEndDate.value;
-  selectedPeriod.value = 'custom';
+  console.log('applyCustomRange called:', {
+    customStartDate: customStartDate.value,
+    customEndDate: customEndDate.value,
+    beforeApplied: {
+      start: appliedCustomStart.value,
+      end: appliedCustomEnd.value
+    }
+  });
+
+  // 关闭弹窗
   showCustomModal.value = false;
 
   // 重置展开状态
   Object.keys(expandedGroups).forEach(key => delete expandedGroups[key]);
+
+  // 批量更新状态，避免多次触发 watch
+  // 先设置自定义日期，再设置 selectedPeriod，确保 dateRange computed 能正确计算
+  appliedCustomStart.value = customStartDate.value;
+  appliedCustomEnd.value = customEndDate.value;
+
+  // 使用 nextTick 确保自定义日期已更新
+  await nextTick();
+
+  // 最后设置 selectedPeriod，这样 dateRange computed 计算时能获取到正确的日期
+  selectedPeriod.value = 'custom';
+
+  console.log('After setting:', {
+    appliedCustomStart: appliedCustomStart.value,
+    appliedCustomEnd: appliedCustomEnd.value,
+    selectedPeriod: selectedPeriod.value
+  });
+
+  // 手动触发数据加载
+  await loadData();
+
+  // 默认展开第一个分组
+  await nextTick();
+  if (groupedMovements.value.length > 0) {
+    expandedGroups[groupedMovements.value[0].date] = true;
+  }
 };
 
 const toggleGroup = (date) => {
@@ -606,6 +688,14 @@ const toggleGroup = (date) => {
 const loadData = async () => {
   try {
     const { startDate, endDate } = dateRange.value;
+
+    console.log('loadData called:', {
+      selectedPeriod: selectedPeriod.value,
+      appliedCustomStart: appliedCustomStart.value,
+      appliedCustomEnd: appliedCustomEnd.value,
+      startDate: startDate?.toISOString(),
+      endDate: endDate?.toISOString()
+    });
 
     // 计算天数用于获取每日统计
     const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
@@ -631,15 +721,28 @@ const loadData = async () => {
   }
 };
 
+const loadSettings = async () => {
+  try {
+    const data = await api.getSettings();
+    settings.value = data;
+  } catch (error) {
+    console.error('加载设置失败:', error);
+  }
+};
+
 // 监听时间范围变化
-watch([selectedPeriod, appliedCustomStart, appliedCustomEnd], () => {
-  loadData();
+// 注意：自定义日期范围由 applyCustomRange 函数手动触发 loadData，不需要 watch
+watch(selectedPeriod, (newPeriod) => {
+  if (newPeriod !== 'custom') {
+    loadData();
+  }
 }, { immediate: false });
 
 onMounted(() => {
   // 初始化自定义日期为今天
   customStartDate.value = today.value;
   customEndDate.value = today.value;
+  loadSettings();
   loadData();
 });
 </script>

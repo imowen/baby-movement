@@ -137,22 +137,27 @@ const maxDate = computed(() => {
 const pregnancyInfo = computed(() => {
   if (!settings.value.dueDate) return null;
 
+  // 使用午夜时间（00:00:00）确保日期计算准确
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   const dueDate = new Date(settings.value.dueDate);
+  dueDate.setHours(0, 0, 0, 0);
 
   // 预产期通常是40周，280天
   const conceptionDate = new Date(dueDate);
   conceptionDate.setDate(conceptionDate.getDate() - 280);
+  conceptionDate.setHours(0, 0, 0, 0);
 
   // 计算从怀孕开始到现在的天数
-  const daysSinceConception = Math.floor((today - conceptionDate) / (1000 * 60 * 60 * 24));
+  const daysSinceConception = Math.round((today - conceptionDate) / (1000 * 60 * 60 * 24));
 
   // 计算周和天
   const weeks = Math.floor(daysSinceConception / 7);
   const days = daysSinceConception % 7;
 
   // 距离预产期的天数
-  const daysUntilDue = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+  const daysUntilDue = Math.round((dueDate - today) / (1000 * 60 * 60 * 24));
 
   return {
     weeks,

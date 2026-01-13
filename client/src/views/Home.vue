@@ -95,7 +95,12 @@
           >
             <div class="flex items-center gap-2">
               <span class="text-lg">📅</span>
-              <span class="font-medium text-gray-700">{{ group.dateLabel }}</span>
+              <div>
+                <div class="font-medium text-gray-700">{{ group.dateLabel }}</div>
+                <div v-if="getPregnancyWeekForDate(group.dateKey)" class="text-xs text-gray-500">
+                  {{ getPregnancyWeekForDate(group.dateKey) }}
+                </div>
+              </div>
             </div>
             <div class="flex items-center gap-2">
               <span class="text-sm text-primary-600 font-medium">{{ group.movements.length }}次</span>
@@ -278,15 +283,20 @@ const currentDate = computed(() => {
 const pregnancyInfo = computed(() => {
   if (!settings.value.dueDate) return null;
 
+  // 使用午夜时间（00:00:00）确保日期计算准确
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   const dueDate = new Date(settings.value.dueDate);
+  dueDate.setHours(0, 0, 0, 0);
 
   // 预产期通常是40周，280天
   const conceptionDate = new Date(dueDate);
   conceptionDate.setDate(conceptionDate.getDate() - 280);
+  conceptionDate.setHours(0, 0, 0, 0);
 
   // 计算从怀孕开始到现在的天数
-  const daysSinceConception = Math.floor((today - conceptionDate) / (1000 * 60 * 60 * 24));
+  const daysSinceConception = Math.round((today - conceptionDate) / (1000 * 60 * 60 * 24));
 
   // 计算周和天
   const weeks = Math.floor(daysSinceConception / 7);
@@ -367,6 +377,33 @@ const getTagEmoji = (tag) => {
     '其他': '✨'
   };
   return emojiMap[tag] || '✨';
+};
+
+// 计算特定日期的孕周期
+const getPregnancyWeekForDate = (dateKey) => {
+  if (!settings.value.dueDate) return null;
+
+  const targetDate = new Date(dateKey + 'T00:00:00');
+  targetDate.setHours(0, 0, 0, 0);
+
+  const dueDate = new Date(settings.value.dueDate);
+  dueDate.setHours(0, 0, 0, 0);
+
+  // 预产期通常是40周，280天
+  const conceptionDate = new Date(dueDate);
+  conceptionDate.setDate(conceptionDate.getDate() - 280);
+  conceptionDate.setHours(0, 0, 0, 0);
+
+  // 计算从怀孕开始到目标日期的天数
+  const daysSinceConception = Math.round((targetDate - conceptionDate) / (1000 * 60 * 60 * 24));
+
+  // 计算周和天
+  const weeks = Math.floor(daysSinceConception / 7);
+  const days = daysSinceConception % 7;
+
+  if (weeks < 0) return null; // 如果日期在怀孕之前
+
+  return `孕${weeks}周${days > 0 ? days + '天' : ''}`;
 };
 
 // 按日期分组的记录
