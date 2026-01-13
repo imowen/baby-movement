@@ -53,8 +53,16 @@ export default {
   },
 
   // 统计
-  getTodayStats() {
-    return api.get('/movements/today-stats');
+  getTodayStats(date) {
+    // 如果没有传递日期，使用客户端本地日期
+    if (!date) {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      date = `${year}-${month}-${day}`;
+    }
+    return api.get('/movements/today-stats', { params: { date } });
   },
   getDailyStats(days = 30) {
     return api.get('/movements/daily-stats', { params: { days } });

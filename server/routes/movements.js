@@ -47,12 +47,20 @@ router.get('/', (req, res) => {
 // 获取今日统计
 router.get('/today-stats', (req, res) => {
   try {
-    // 使用本地时间而不是UTC时间
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const today = `${year}-${month}-${day}`;
+    // 使用客户端传递的日期，如果没有则使用服务器本地时间
+    let today;
+    if (req.query.date) {
+      // 客户端传递的日期格式：YYYY-MM-DD
+      today = req.query.date;
+    } else {
+      // 回退到服务器本地时间
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      today = `${year}-${month}-${day}`;
+    }
+
     const stats = movementOperations.getTodayStats(today);
 
     res.json(stats);
