@@ -412,9 +412,13 @@ const groupedMovements = computed(() => {
   if (recentMovements.value.length === 0) return [];
 
   const groups = {};
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
+
+  // 使用时区获取今天和昨天的日期（与Stats页面一致）
+  const timezone = settings.value.timezone || 'auto';
+  const todayStr = getToday(timezone);
+  const yesterdayDate = new Date(todayStr);
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
 
   recentMovements.value.forEach(m => {
     const date = new Date(m.timestamp);
@@ -428,14 +432,15 @@ const groupedMovements = computed(() => {
 
   return Object.entries(groups)
     .map(([dateKey, movements]) => {
-      const date = new Date(dateKey + 'T00:00:00');
       let dateLabel;
 
-      if (date.toDateString() === today.toDateString()) {
+      // 使用字符串比较来判断今天和昨天（timezone-aware）
+      if (dateKey === todayStr) {
         dateLabel = '今天';
-      } else if (date.toDateString() === yesterday.toDateString()) {
+      } else if (dateKey === yesterdayStr) {
         dateLabel = '昨天';
       } else {
+        const date = new Date(dateKey + 'T00:00:00');
         dateLabel = date.toLocaleDateString('zh-CN', {
           month: 'long',
           day: 'numeric',
