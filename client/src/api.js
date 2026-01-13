@@ -74,5 +74,8 @@ export default {
   },
   setDueDate(dueDate) {
     return api.post('/settings/due-date', { dueDate });
+  },
+  setTimezone(timezone) {
+    return api.post('/settings/timezone', { timezone });
   }
 };

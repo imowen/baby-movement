@@ -238,6 +238,7 @@
 <script setup>
 import { ref, computed, onMounted, reactive } from 'vue';
 import api from '../api.js';
+import { getToday } from '../utils/timezone.js';
 
 // 状态
 const showRecordModal = ref(false);
@@ -246,7 +247,7 @@ const todayStats = ref({ total: 0, lastTime: null });
 const recentMovements = ref([]);
 const recordCount = ref(0); // 本次记录会话的次数
 const justRecorded = ref(false); // 刚刚记录成功的标记
-const settings = ref({ dueDate: null }); // 设置（预产期）
+const settings = ref({ dueDate: null, timezone: 'auto' }); // 设置（预产期和时区）
 
 // 强度和标签选项配置
 const intensityOptions = ref([
@@ -473,6 +474,10 @@ const loadSettings = async () => {
 
 const loadData = async () => {
   try {
+    // 使用时区获取"今天"
+    const timezone = settings.value.timezone || 'auto';
+    const today = getToday(timezone);
+
     // 计算最近3天的日期范围
     const endDate = new Date();
     endDate.setHours(23, 59, 59, 999);
@@ -481,7 +486,7 @@ const loadData = async () => {
     startDate.setHours(0, 0, 0, 0);
 
     const [stats, movements] = await Promise.all([
-      api.getTodayStats(),
+      api.getTodayStats(today), // 传递基于时区的日期
       api.getMovements({
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),

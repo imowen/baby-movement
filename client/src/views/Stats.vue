@@ -248,6 +248,7 @@ import {
   Filler
 } from 'chart.js';
 import api from '../api.js';
+import { getToday } from '../utils/timezone.js';
 
 // 注册 Chart.js 组件
 ChartJS.register(
@@ -272,7 +273,7 @@ const customEndDate = ref('');
 const appliedCustomStart = ref('');
 const appliedCustomEnd = ref('');
 const expandedGroups = reactive({});
-const settings = ref({ dueDate: null });
+const settings = ref({ dueDate: null, timezone: 'auto' });
 
 const periodOptions = [
   { value: 'today', label: '今天' },
@@ -344,10 +345,20 @@ const dateRange = computed(() => {
   startDate.setHours(0, 0, 0, 0);
 
   if (selectedPeriod.value === 'today') {
-    // 今天
+    // 今天 - 使用时区
+    const timezone = settings.value.timezone || 'auto';
+    const todayStr = getToday(timezone);
+    startDate = new Date(todayStr + 'T00:00:00');
+    endDate = new Date(todayStr + 'T23:59:59');
   } else if (selectedPeriod.value === 'yesterday') {
-    startDate.setDate(startDate.getDate() - 1);
-    endDate.setDate(endDate.getDate() - 1);
+    // 昨天 - 使用时区
+    const timezone = settings.value.timezone || 'auto';
+    const todayStr = getToday(timezone);
+    const yesterday = new Date(todayStr);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    startDate = new Date(yesterdayStr + 'T00:00:00');
+    endDate = new Date(yesterdayStr + 'T23:59:59');
   } else if (selectedPeriod.value === 'custom') {
     // 验证自定义日期是否有效
     if (appliedCustomStart.value && appliedCustomEnd.value) {

@@ -4,6 +4,17 @@ import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// 时区验证函数
+function isValidTimezone(timezone) {
+  if (timezone === 'auto') return true;
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: timezone });
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
 // 所有路由都需要认证
 router.use(authenticateToken);
 
@@ -37,6 +48,27 @@ router.post('/due-date', (req, res) => {
     res.json(settings);
   } catch (error) {
     console.error('设置预产期错误:', error);
+    res.status(500).json({ error: '设置失败' });
+  }
+});
+
+// 设置时区
+router.post('/timezone', (req, res) => {
+  try {
+    const { timezone } = req.body;
+
+    if (!timezone) {
+      return res.status(400).json({ error: '请提供时区' });
+    }
+
+    if (!isValidTimezone(timezone)) {
+      return res.status(400).json({ error: '时区格式不正确' });
+    }
+
+    const settings = settingsOperations.setTimezone(timezone);
+    res.json(settings);
+  } catch (error) {
+    console.error('设置时区错误:', error);
     res.status(500).json({ error: '设置失败' });
   }
 });

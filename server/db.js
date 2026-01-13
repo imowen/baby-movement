@@ -10,7 +10,8 @@ const defaultData = {
   users: [],
   movements: [],
   settings: {
-    dueDate: null  // 预产期
+    dueDate: null,  // 预产期
+    timezone: 'auto'  // 时区：'auto'或IANA时区标识符
   }
 };
 
@@ -144,7 +145,12 @@ export const movementOperations = {
 // 设置相关操作
 export const settingsOperations = {
   get() {
-    return db.data.settings || { dueDate: null };
+    const settings = db.data.settings || { dueDate: null };
+    // 向后兼容：确保timezone字段存在
+    if (!settings.timezone) {
+      settings.timezone = 'auto';
+    }
+    return settings;
   },
 
   setDueDate(dueDate) {
@@ -152,6 +158,15 @@ export const settingsOperations = {
       db.data.settings = {};
     }
     db.data.settings.dueDate = dueDate;
+    db.write();
+    return db.data.settings;
+  },
+
+  setTimezone(timezone) {
+    if (!db.data.settings) {
+      db.data.settings = { dueDate: null };
+    }
+    db.data.settings.timezone = timezone;
     db.write();
     return db.data.settings;
   }

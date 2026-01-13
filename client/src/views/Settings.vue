@@ -77,6 +77,86 @@
       </div>
     </div>
 
+    <!-- 时区设置 -->
+    <div class="card mb-6 fade-in">
+      <h3 class="font-semibold text-gray-700 mb-4 flex items-center gap-2">
+        <span>🌍</span>
+        <span>时区设置</span>
+      </h3>
+
+      <!-- 当前时区显示 -->
+      <div class="bg-gradient-to-br from-primary-50 to-warm-50 rounded-2xl p-4 mb-4">
+        <div class="text-center">
+          <div class="text-sm text-gray-600 mb-2">当前时区</div>
+          <div class="text-lg font-semibold text-primary-600 mb-2">
+            {{ currentTimezoneDisplay }}
+          </div>
+          <div class="text-sm text-gray-700">
+            当前时间：{{ currentTimeDisplay }}
+          </div>
+        </div>
+      </div>
+
+      <!-- 时区选择器 -->
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            选择时区
+          </label>
+          <select
+            v-model="timezoneInput"
+            @change="updateCurrentTime"
+            class="input-field"
+          >
+            <optgroup
+              v-for="region in timezonesByRegion"
+              :key="region.region"
+              :label="region.region"
+            >
+              <option
+                v-for="tz in region.timezones"
+                :key="tz.value"
+                :value="tz.value"
+              >
+                {{ tz.label }}
+              </option>
+            </optgroup>
+          </select>
+          <p class="text-xs text-gray-500 mt-2">
+            💡 选择时区后，"今天"的统计将基于所选时区
+          </p>
+        </div>
+
+        <button
+          @click="saveTimezone"
+          :disabled="savingTimezone"
+          class="btn-primary w-full disabled:opacity-50"
+        >
+          {{ savingTimezone ? '保存中...' : '保存时区' }}
+        </button>
+
+        <!-- 成功提示 -->
+        <div v-if="saveTimezoneSuccess" class="bg-green-50 text-green-700 px-4 py-3 rounded-2xl text-sm text-center fade-in">
+          ✅ 保存成功！
+        </div>
+
+        <!-- 错误提示 -->
+        <div v-if="saveTimezoneError" class="bg-red-50 text-red-700 px-4 py-3 rounded-2xl text-sm text-center fade-in">
+          {{ saveTimezoneError }}
+        </div>
+      </div>
+
+      <!-- 时区说明 -->
+      <div class="mt-6 pt-6 border-t border-gray-200">
+        <h4 class="text-sm font-semibold text-gray-700 mb-2">为什么需要设置时区？</h4>
+        <ul class="text-xs text-gray-600 space-y-1">
+          <li>• 确保跨国家庭成员看到一致的"今天"数据</li>
+          <li>• 避免服务器时区与用户时区不一致的问题</li>
+          <li>• 自动模式会使用您设备的本地时区</li>
+        </ul>
+      </div>
+    </div>
+
     <!-- 账户设置 -->
     <div class="card fade-in">
       <h3 class="font-semibold text-gray-700 mb-4 flex items-center gap-2">
@@ -96,9 +176,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../api.js';
+import { COMMON_TIMEZONES, getTimezoneDisplayInfo, getCurrentTime } from '../utils/timezone.js';
 
 const router = useRouter();
 
@@ -112,11 +193,18 @@ const handleLogout = () => {
 };
 
 // 状态
-const settings = ref({ dueDate: null });
+const settings = ref({ dueDate: null, timezone: 'auto' });
 const dueDateInput = ref('');
 const saving = ref(false);
 const saveSuccess = ref(false);
 const saveError = ref('');
+
+// 时区状态
+const timezoneInput = ref('auto');
+const savingTimezone = ref(false);
+const saveTimezoneSuccess = ref(false);
+const saveTimezoneError = ref('');
+const currentTimeDisplay = ref('');
 
 // 日期范围限制
 const minDate = computed(() => {
@@ -177,6 +265,24 @@ const formatDate = (dateStr) => {
   });
 };
 
+// 时区相关计算属性
+const currentTimezoneDisplay = computed(() => {
+  const timezone = settings.value.timezone || 'auto';
+  const info = getTimezoneDisplayInfo(timezone);
+  return info.label;
+});
+
+const timezonesByRegion = computed(() => COMMON_TIMEZONES);
+
+// 更新当前时间显示
+const updateCurrentTime = () => {
+  const timezone = timezoneInput.value || 'auto';
+  currentTimeDisplay.value = getCurrentTime(timezone);
+};
+
+// 定时器
+let timeUpdateInterval = null;
+
 // 加载设置
 const loadSettings = async () => {
   try {
@@ -185,8 +291,31 @@ const loadSettings = async () => {
     if (data.dueDate) {
       dueDateInput.value = data.dueDate.split('T')[0];
     }
+    if (data.timezone) {
+      timezoneInput.value = data.timezone;
+    }
+    updateCurrentTime();
   } catch (error) {
     console.error('加载设置失败:', error);
+  }
+};
+
+// 保存时区
+const saveTimezone = async () => {
+  savingTimezone.value = true;
+  saveTimezoneSuccess.value = false;
+  saveTimezoneError.value = '';
+
+  try {
+    const data = await api.setTimezone(timezoneInput.value);
+    settings.value = data;
+    saveTimezoneSuccess.value = true;
+    setTimeout(() => saveTimezoneSuccess.value = false, 3000);
+  } catch (error) {
+    saveTimezoneError.value = error.error || '保存失败，请重试';
+    setTimeout(() => saveTimezoneError.value = '', 3000);
+  } finally {
+    savingTimezone.value = false;
   }
 };
 
@@ -216,5 +345,13 @@ const saveDueDate = async () => {
 
 onMounted(() => {
   loadSettings();
+  // 每秒更新时间显示
+  timeUpdateInterval = setInterval(updateCurrentTime, 1000);
+});
+
+onUnmounted(() => {
+  if (timeUpdateInterval) {
+    clearInterval(timeUpdateInterval);
+  }
 });
 </script>
