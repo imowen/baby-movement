@@ -29,9 +29,11 @@ router.post('/', (req, res) => {
 // 获取记录列表（支持日期筛选）
 router.get('/', (req, res) => {
   try {
+    const userId = req.user.id;
     const { startDate, endDate, limit = 50 } = req.query;
 
     const movements = movementOperations.findAll({
+      userId,
       startDate,
       endDate,
       limit: parseInt(limit)
@@ -47,6 +49,8 @@ router.get('/', (req, res) => {
 // 获取今日统计
 router.get('/today-stats', (req, res) => {
   try {
+    const userId = req.user.id;
+
     // 使用客户端传递的日期，如果没有则使用服务器本地时间
     let today;
     if (req.query.date) {
@@ -61,7 +65,7 @@ router.get('/today-stats', (req, res) => {
       today = `${year}-${month}-${day}`;
     }
 
-    const stats = movementOperations.getTodayStats(today);
+    const stats = movementOperations.getTodayStats(today, userId);
 
     res.json(stats);
   } catch (error) {
@@ -73,8 +77,9 @@ router.get('/today-stats', (req, res) => {
 // 获取历史统计（按天）
 router.get('/daily-stats', (req, res) => {
   try {
+    const userId = req.user.id;
     const { days = 30 } = req.query;
-    const stats = movementOperations.getDailyStats(parseInt(days));
+    const stats = movementOperations.getDailyStats(parseInt(days), userId);
 
     res.json(stats);
   } catch (error) {

@@ -62,8 +62,13 @@ export const movementOperations = {
     return movement;
   },
 
-  findAll({ startDate, endDate, limit = 50 }) {
+  findAll({ userId, startDate, endDate, limit = 50 }) {
     let movements = [...db.data.movements];
+
+    // Filter by user
+    if (userId) {
+      movements = movements.filter(m => m.user_id === userId);
+    }
 
     if (startDate) {
       movements = movements.filter(m => m.timestamp >= startDate);
@@ -79,9 +84,9 @@ export const movementOperations = {
     return movements.slice(0, limit);
   },
 
-  getTodayStats(date) {
+  getTodayStats(date, userId) {
     const movements = db.data.movements.filter(m => {
-      return m.timestamp.startsWith(date);
+      return m.user_id === userId && m.timestamp.startsWith(date);
     });
 
     const byIntensity = {};
@@ -92,21 +97,28 @@ export const movementOperations = {
       byTag[m.tag] = (byTag[m.tag] || 0) + 1;
     });
 
+    // Sort movements by timestamp to get the most recent one
+    const sortedMovements = [...movements].sort((a, b) =>
+      new Date(b.timestamp) - new Date(a.timestamp)
+    );
+
     return {
       total: movements.length,
-      last_time: movements.length > 0 ? movements[movements.length - 1].timestamp : null,
+      last_time: sortedMovements.length > 0 ? sortedMovements[0].timestamp : null,
       byIntensity: Object.entries(byIntensity).map(([intensity, count]) => ({ intensity, count })),
       byTag: Object.entries(byTag).map(([tag, count]) => ({ tag, count }))
         .sort((a, b) => b.count - a.count)
     };
   },
 
-  getDailyStats(days) {
+  getDailyStats(days, userId) {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
     const cutoffStr = cutoffDate.toISOString();
 
-    const movements = db.data.movements.filter(m => m.timestamp >= cutoffStr);
+    const movements = db.data.movements.filter(m =>
+      m.user_id === userId && m.timestamp >= cutoffStr
+    );
 
     // 按日期分组
     const grouped = {};
