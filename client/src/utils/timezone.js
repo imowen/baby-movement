@@ -210,3 +210,70 @@ export function getDateInTimezone(timestamp, timezone = 'auto') {
     }
   }
 }
+
+/**
+ * 将本地日期字符串转换为UTC日期范围
+ * @param {string} dateStr - YYYY-MM-DD格式的日期字符串
+ * @param {string} timezone - IANA时区标识符或'auto'
+ * @returns {object} { startDate: string, endDate: string } - ISO格式的UTC时间戳
+ */
+export function getDateRangeInUTC(dateStr, timezone = 'auto') {
+  if (timezone === 'auto') {
+    // 使用本地时区
+    const startDate = new Date(dateStr + 'T00:00:00');
+    const endDate = new Date(dateStr + 'T23:59:59.999');
+    return {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString()
+    };
+  } else {
+    // 使用指定时区
+    try {
+      // 简单可靠的方法：
+      // 1. 获取目标时区的当前偏移量
+      // 2. 应用该偏移量到目标日期
+
+      // 解析日期
+      const [year, month, day] = dateStr.split('-').map(Number);
+
+      // 创建目标日期在UTC的午夜时间作为参考点
+      const refDateUTC = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+
+      // 获取这个UTC时间在目标时区对应的本地时间字符串
+      const tzString = refDateUTC.toLocaleString('en-US', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+
+      // 解析时区本地时间
+      const tzDate = new Date(tzString);
+
+      // 计算偏移量（目标时区相对于UTC的偏移）
+      const offset = refDateUTC.getTime() - tzDate.getTime();
+
+      // 现在我们知道偏移量了，可以计算目标日期在目标时区的00:00:00和23:59:59对应的UTC时间
+      // 在目标时区创建日期的00:00:00
+      const startLocal = new Date(year, month - 1, day, 0, 0, 0, 0);
+      const endLocal = new Date(year, month - 1, day, 23, 59, 59, 999);
+
+      // 转换为UTC（加上偏移量）
+      const startUTC = new Date(startLocal.getTime() + offset);
+      const endUTC = new Date(endLocal.getTime() + offset);
+
+      return {
+        startDate: startUTC.toISOString(),
+        endDate: endUTC.toISOString()
+      };
+    } catch (error) {
+      console.error('Error converting date range to UTC:', error);
+      // 回退到auto模式
+      return getDateRangeInUTC(dateStr, 'auto');
+    }
+  }
+}

@@ -84,10 +84,26 @@ export const movementOperations = {
     return movements.slice(0, limit);
   },
 
-  getTodayStats(date, userId) {
-    const movements = db.data.movements.filter(m => {
-      return m.user_id === userId && m.timestamp.startsWith(date);
-    });
+  getTodayStats(dateOrRange, userId) {
+    let movements;
+
+    // 支持两种模式：
+    // 1. 对象 { startDate, endDate } - 使用UTC日期范围过滤
+    // 2. 字符串 "YYYY-MM-DD" - 使用旧的startsWith过滤（向后兼容）
+    if (typeof dateOrRange === 'object' && dateOrRange.startDate && dateOrRange.endDate) {
+      // 新模式：使用UTC日期范围
+      movements = db.data.movements.filter(m => {
+        return m.user_id === userId &&
+               m.timestamp >= dateOrRange.startDate &&
+               m.timestamp <= dateOrRange.endDate;
+      });
+    } else {
+      // 旧模式：使用日期字符串（向后兼容）
+      const date = dateOrRange;
+      movements = db.data.movements.filter(m => {
+        return m.user_id === userId && m.timestamp.startsWith(date);
+      });
+    }
 
     const byIntensity = {};
     const byTag = {};

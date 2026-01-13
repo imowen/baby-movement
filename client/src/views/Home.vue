@@ -238,7 +238,7 @@
 <script setup>
 import { ref, computed, onMounted, reactive } from 'vue';
 import api from '../api.js';
-import { getToday, getDateInTimezone } from '../utils/timezone.js';
+import { getToday, getDateInTimezone, getDateRangeInUTC } from '../utils/timezone.js';
 
 // 状态
 const showRecordModal = ref(false);
@@ -483,6 +483,9 @@ const loadData = async () => {
     const timezone = settings.value.timezone || 'auto';
     const today = getToday(timezone);
 
+    // 将今天的日期转换为UTC日期范围（用于getTodayStats）
+    const todayRange = getDateRangeInUTC(today, timezone);
+
     // 计算最近3天的日期范围
     const endDate = new Date();
     endDate.setHours(23, 59, 59, 999);
@@ -491,7 +494,7 @@ const loadData = async () => {
     startDate.setHours(0, 0, 0, 0);
 
     const [stats, movements] = await Promise.all([
-      api.getTodayStats(today), // 传递基于时区的日期
+      api.getTodayStats(todayRange), // 传递UTC日期范围
       api.getMovements({
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),

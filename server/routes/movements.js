@@ -51,23 +51,34 @@ router.get('/today-stats', (req, res) => {
   try {
     const userId = req.user.id;
 
-    // 使用客户端传递的日期，如果没有则使用服务器本地时间
-    let today;
-    if (req.query.date) {
-      // 客户端传递的日期格式：YYYY-MM-DD
-      today = req.query.date;
+    // 支持两种模式：
+    // 1. 新模式：使用UTC日期范围（startDate, endDate）
+    // 2. 旧模式：使用日期字符串（date） - 向后兼容
+
+    if (req.query.startDate && req.query.endDate) {
+      // 新模式：使用日期范围
+      const stats = movementOperations.getTodayStats(
+        { startDate: req.query.startDate, endDate: req.query.endDate },
+        userId
+      );
+      res.json(stats);
     } else {
-      // 回退到服务器本地时间
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      today = `${year}-${month}-${day}`;
+      // 旧模式：使用日期字符串（向后兼容）
+      let today;
+      if (req.query.date) {
+        today = req.query.date;
+      } else {
+        // 回退到服务器本地时间
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        today = `${year}-${month}-${day}`;
+      }
+
+      const stats = movementOperations.getTodayStats(today, userId);
+      res.json(stats);
     }
-
-    const stats = movementOperations.getTodayStats(today, userId);
-
-    res.json(stats);
   } catch (error) {
     console.error('获取统计错误:', error);
     res.status(500).json({ error: '获取统计失败' });
