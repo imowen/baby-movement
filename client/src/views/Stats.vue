@@ -248,7 +248,7 @@ import {
   Filler
 } from 'chart.js';
 import api from '../api.js';
-import { getToday } from '../utils/timezone.js';
+import { getToday, getDateInTimezone } from '../utils/timezone.js';
 
 // 注册 Chart.js 组件
 ChartJS.register(
@@ -562,8 +562,12 @@ const groupedMovements = computed(() => {
 
   const groups = {};
 
+  // 使用时区转换
+  const timezone = settings.value.timezone || 'auto';
+
   allMovements.value.forEach(m => {
-    const date = new Date(m.timestamp).toISOString().split('T')[0];
+    // FIXED: 使用时区转换UTC时间戳为用户时区的日期
+    const date = getDateInTimezone(m.timestamp, timezone);
     if (!groups[date]) {
       groups[date] = [];
     }

@@ -238,7 +238,7 @@
 <script setup>
 import { ref, computed, onMounted, reactive } from 'vue';
 import api from '../api.js';
-import { getToday } from '../utils/timezone.js';
+import { getToday, getDateInTimezone } from '../utils/timezone.js';
 
 // 状态
 const showRecordModal = ref(false);
@@ -421,8 +421,8 @@ const groupedMovements = computed(() => {
   const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
 
   recentMovements.value.forEach(m => {
-    const date = new Date(m.timestamp);
-    const dateKey = date.toISOString().split('T')[0];
+    // FIXED: 使用时区转换UTC时间戳为用户时区的日期
+    const dateKey = getDateInTimezone(m.timestamp, timezone);
 
     if (!groups[dateKey]) {
       groups[dateKey] = [];

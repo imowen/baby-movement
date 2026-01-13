@@ -177,3 +177,36 @@ export function getCurrentTime(timezone = 'auto') {
     }
   }
 }
+
+/**
+ * 将UTC时间戳转换为指定时区的日期字符串
+ * @param {Date|string} timestamp - UTC时间戳
+ * @param {string} timezone - IANA时区标识符或'auto'
+ * @returns {string} YYYY-MM-DD格式的日期字符串（基于时区）
+ */
+export function getDateInTimezone(timestamp, timezone = 'auto') {
+  const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
+
+  if (timezone === 'auto') {
+    // 使用本地时区
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  } else {
+    // 使用指定时区
+    try {
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+      return formatter.format(date);
+    } catch (error) {
+      console.error('Invalid timezone:', timezone, error);
+      // 回退到auto模式
+      return getDateInTimezone(timestamp, 'auto');
+    }
+  }
+}
