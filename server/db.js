@@ -1,6 +1,7 @@
 import { JSONFilePreset } from 'lowdb/node';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { getDateInTimezone } from './utils/timezone.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -127,7 +128,7 @@ export const movementOperations = {
     };
   },
 
-  getDailyStats(days, userId) {
+  getDailyStats(days, userId, timezone = 'auto') {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
     const cutoffStr = cutoffDate.toISOString();
@@ -136,10 +137,11 @@ export const movementOperations = {
       m.user_id === userId && m.timestamp >= cutoffStr
     );
 
-    // 按日期分组
+    // 按日期分组 - 使用时区转换
     const grouped = {};
     movements.forEach(m => {
-      const date = m.timestamp.split('T')[0];
+      // FIXED: 使用时区转换UTC时间戳为用户时区的日期
+      const date = getDateInTimezone(m.timestamp, timezone);
       if (!grouped[date]) {
         grouped[date] = [];
       }

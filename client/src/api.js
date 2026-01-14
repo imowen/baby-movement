@@ -80,8 +80,8 @@ export default {
 
     return api.get('/movements/today-stats', { params: queryParams });
   },
-  getDailyStats(days = 30) {
-    return api.get('/movements/daily-stats', { params: { days } });
+  getDailyStats(days = 30, timezone = 'auto') {
+    return api.get('/movements/daily-stats', { params: { days, timezone } });
   },
 
   // 设置

@@ -89,8 +89,8 @@ router.get('/today-stats', (req, res) => {
 router.get('/daily-stats', (req, res) => {
   try {
     const userId = req.user.id;
-    const { days = 30 } = req.query;
-    const stats = movementOperations.getDailyStats(parseInt(days), userId);
+    const { days = 30, timezone = 'auto' } = req.query;
+    const stats = movementOperations.getDailyStats(parseInt(days), userId, timezone);
 
     res.json(stats);
   } catch (error) {

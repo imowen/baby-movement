@@ -715,8 +715,11 @@ const loadData = async () => {
     // 计算天数用于获取每日统计
     const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
 
+    // 获取时区设置
+    const timezone = settings.value.timezone || 'auto';
+
     const [stats, movements] = await Promise.all([
-      api.getDailyStats(days),
+      api.getDailyStats(days, timezone),
       api.getMovements({
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
