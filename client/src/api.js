@@ -93,5 +93,27 @@ export default {
   },
   setTimezone(timezone) {
     return api.post('/settings/timezone', { timezone });
+  },
+
+  // 孕期信息
+  getPregnancyInfo() {
+    return api.get('/pregnancy/info');
+  },
+  setupPregnancy(data) {
+    return api.post('/pregnancy/setup', data);
+  },
+  getWeekInfo(weekNumber) {
+    return api.get(`/pregnancy/week/${weekNumber}`);
+  },
+  getPregnancyStandards() {
+    return api.get('/pregnancy/standards');
+  },
+  getPregnancyTimeline() {
+    return api.get('/pregnancy/timeline');
+  },
+
+  // 胎动分析
+  analyzeMovements() {
+    return api.get('/movements/analyze');
   }
 };

@@ -1,6 +1,13 @@
 import express from 'express';
 import { movementOperations } from '../db.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { getDb } from '../db.js';
+import { calculateGestationalAge } from '../utils/pregnancyCalculator.js';
+import {
+  analyzeFetalMovement,
+  compareWithYesterday,
+  getMovementAdvice
+} from '../utils/fetalMovementAnalyzer.js';
 
 const router = express.Router();
 
@@ -96,6 +103,70 @@ router.get('/daily-stats', (req, res) => {
   } catch (error) {
     console.error('获取历史统计错误:', error);
     res.status(500).json({ error: '获取统计失败' });
+  }
+});
+
+// 分析胎动情况
+router.get('/analyze', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const db = getDb();
+    const user = db.data.users.find(u => u.id === userId);
+
+    if (!user) {
+      return res.status(404).json({ error: '用户不存在' });
+    }
+
+    // 检查是否设置了孕期信息
+    if (!user.lmp && !user.edd) {
+      return res.json({
+        hasPregnancyInfo: false,
+        message: '请先设置末次月经或预产期以获取个性化分析'
+      });
+    }
+
+    // 计算当前孕周
+    let gestationalAge;
+    if (user.lmp) {
+      gestationalAge = calculateGestationalAge(new Date(user.lmp));
+    } else if (user.edd) {
+      const { calculateGestationalAgeFromEDD } = await import('../utils/pregnancyCalculator.js');
+      gestationalAge = calculateGestationalAgeFromEDD(new Date(user.edd));
+    }
+
+    // 获取所有胎动记录
+    const movements = movementOperations.findAll({ userId, limit: 500 });
+
+    // 分析胎动
+    const analysis = analyzeFetalMovement(
+      movements,
+      gestationalAge.weeks,
+      user.isHighRisk || false
+    );
+
+    // 对比昨天
+    const comparison = compareWithYesterday(movements);
+
+    // 获取建议
+    const advice = getMovementAdvice(
+      gestationalAge.weeks,
+      analysis.counts?.today || 0
+    );
+
+    res.json({
+      hasPregnancyInfo: true,
+      gestationalAge: {
+        weeks: gestationalAge.weeks,
+        days: gestationalAge.days,
+        formatted: gestationalAge.formattedWeeks
+      },
+      analysis,
+      comparison,
+      advice
+    });
+  } catch (error) {
+    console.error('分析胎动失败:', error);
+    res.status(500).json({ error: '分析失败' });
   }
 });
 

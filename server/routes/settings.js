@@ -1,5 +1,5 @@
 import express from 'express';
-import { settingsOperations } from '../db.js';
+import { settingsOperations, getDb } from '../db.js';
 import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -44,7 +44,17 @@ router.post('/due-date', (req, res) => {
       return res.status(400).json({ error: '预产期格式不正确' });
     }
 
+    // 保存到settings
     const settings = settingsOperations.setDueDate(dueDate);
+
+    // 同步到用户的edd字段,保持两个系统数据一致
+    const db = getDb();
+    const user = db.data.users.find(u => u.id === req.user.id);
+    if (user) {
+      user.edd = dueDate;
+      db.write();
+    }
+
     res.json(settings);
   } catch (error) {
     console.error('设置预产期错误:', error);

@@ -3,6 +3,7 @@ import Home from './views/Home.vue';
 import Login from './views/Login.vue';
 import Stats from './views/Stats.vue';
 import Settings from './views/Settings.vue';
+import PregnancyGuide from './views/PregnancyGuide.vue';
 
 const routes = [
   {
@@ -26,6 +27,12 @@ const routes = [
     path: '/settings',
     name: 'Settings',
     component: Settings,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/pregnancy-guide',
+    name: 'PregnancyGuide',
+    component: PregnancyGuide,
     meta: { requiresAuth: true }
   }
 ];

@@ -3,13 +3,32 @@
     <!-- 头部信息 -->
     <header class="card mb-6 fade-in">
       <div class="flex items-center justify-between mb-4">
-        <div>
+        <div class="flex-1">
           <h1 class="text-2xl font-bold text-primary-600">🤰 宝宝胎动记录</h1>
-          <p class="text-sm text-gray-500 mt-1">
-            <span v-if="pregnancyInfo">第{{ pregnancyInfo.weeks }}周{{ pregnancyInfo.days }}天</span>
-            <span v-else>未设置预产期</span>
-            · {{ currentDate }}
-          </p>
+          <div class="mt-2 space-y-2">
+            <router-link
+              v-if="pregnancyInfo"
+              to="/pregnancy-guide"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-100 to-pink-100 hover:from-purple-200 hover:to-pink-200 rounded-full text-sm font-medium text-purple-700 transition-all hover:shadow-md group"
+            >
+              <span>📖</span>
+              <span>第{{ pregnancyInfo.weeks }}周{{ pregnancyInfo.days }}天</span>
+              <span class="text-xs opacity-70 group-hover:opacity-100 transition-opacity">查看详情 →</span>
+            </router-link>
+            <router-link
+              v-else
+              to="/pregnancy-guide"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 rounded-full text-sm font-medium text-gray-700 transition-all hover:shadow-md"
+            >
+              <span>📖</span>
+              <span>未设置预产期</span>
+              <span class="text-xs">点击设置 →</span>
+            </router-link>
+            <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-full">
+              <span class="text-sm">📅</span>
+              <span class="text-xs font-medium text-gray-700">{{ currentDate }}</span>
+            </div>
+          </div>
         </div>
         <div class="text-right">
           <div class="text-3xl font-bold text-primary-500">{{ todayStats.total }}</div>

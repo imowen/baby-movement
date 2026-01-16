@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import movementsRoutes from './routes/movements.js';
 import settingsRoutes from './routes/settings.js';
+import pregnancyRoutes from './routes/pregnancy.js';
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/movements', movementsRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/pregnancy', pregnancyRoutes);
 
 // 健康检查
 app.get('/api/health', (req, res) => {

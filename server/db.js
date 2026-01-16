@@ -202,4 +202,7 @@ export const settingsOperations = {
   }
 };
 
+// 导出getDb函数供其他模块使用
+export const getDb = () => db;
+
 export default db;
