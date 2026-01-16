@@ -28,7 +28,7 @@ app.get('/api/health', (req, res) => {
 
 // 生产环境：提供静态文件
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static('dist'));
+  app.use(express.static('../dist'));
   app.get('*', (req, res) => {
     res.sendFile(new URL('../dist/index.html', import.meta.url).pathname);
   });
