@@ -12,7 +12,9 @@ const defaultData = {
   movements: [],
   settings: {
     dueDate: null,  // 预产期
-    timezone: 'auto'  // 时区：'auto'或IANA时区标识符
+    timezone: 'auto',  // 时区：'auto'或IANA时区标识符
+    isHighRisk: false,  // 是否高危孕妇
+    birthDate: null  // 出生日期
   }
 };
 
@@ -180,6 +182,14 @@ export const settingsOperations = {
     if (!settings.timezone) {
       settings.timezone = 'auto';
     }
+    // 向后兼容：确保isHighRisk字段存在
+    if (settings.isHighRisk === undefined) {
+      settings.isHighRisk = false;
+    }
+    // 向后兼容：确保birthDate字段存在
+    if (settings.birthDate === undefined) {
+      settings.birthDate = null;
+    }
     return settings;
   },
 
@@ -197,6 +207,24 @@ export const settingsOperations = {
       db.data.settings = { dueDate: null };
     }
     db.data.settings.timezone = timezone;
+    db.write();
+    return db.data.settings;
+  },
+
+  setHighRisk(isHighRisk) {
+    if (!db.data.settings) {
+      db.data.settings = { dueDate: null, timezone: 'auto' };
+    }
+    db.data.settings.isHighRisk = isHighRisk;
+    db.write();
+    return db.data.settings;
+  },
+
+  setBirthDate(birthDate) {
+    if (!db.data.settings) {
+      db.data.settings = { dueDate: null, timezone: 'auto', isHighRisk: false };
+    }
+    db.data.settings.birthDate = birthDate;
     db.write();
     return db.data.settings;
   }

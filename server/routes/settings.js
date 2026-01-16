@@ -32,7 +32,7 @@ router.get('/', (req, res) => {
 // 设置预产期
 router.post('/due-date', (req, res) => {
   try {
-    const { dueDate } = req.body;
+    const { dueDate, isHighRisk, birthDate } = req.body;
 
     if (!dueDate) {
       return res.status(400).json({ error: '请提供预产期' });
@@ -47,11 +47,29 @@ router.post('/due-date', (req, res) => {
     // 保存到settings
     const settings = settingsOperations.setDueDate(dueDate);
 
+    // 保存高危状态（如果提供）
+    if (isHighRisk !== undefined) {
+      settingsOperations.setHighRisk(isHighRisk);
+      settings.isHighRisk = isHighRisk;
+    }
+
+    // 保存出生日期（如果提供）
+    if (birthDate !== undefined && birthDate !== null) {
+      settingsOperations.setBirthDate(birthDate);
+      settings.birthDate = birthDate;
+    }
+
     // 同步到用户的edd字段,保持两个系统数据一致
     const db = getDb();
     const user = db.data.users.find(u => u.id === req.user.id);
     if (user) {
       user.edd = dueDate;
+      if (isHighRisk !== undefined) {
+        user.isHighRisk = isHighRisk;
+      }
+      if (birthDate !== undefined && birthDate !== null) {
+        user.birthDate = birthDate;
+      }
       db.write();
     }
 

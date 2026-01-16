@@ -9,7 +9,7 @@
           </svg>
         </button>
         <h1 class="text-xl font-bold text-gray-800">孕期指南</h1>
-        <button @click="showSetupModal = true" class="text-pink-500 hover:text-pink-600">
+        <button @click="$router.push('/settings')" class="text-pink-500 hover:text-pink-600">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -27,10 +27,10 @@
         <h2 class="text-2xl font-bold text-gray-800 mb-2">欢迎使用孕期指南</h2>
         <p class="text-gray-600 mb-6">请先设置您的末次月经或预产期，以获取个性化的孕期信息</p>
         <button
-          @click="showSetupModal = true"
+          @click="$router.push('/settings')"
           class="bg-gradient-to-r from-pink-500 to-purple-500 text-white px-8 py-3 rounded-full font-medium hover:shadow-lg transition-all"
         >
-          立即设置
+          前往设置
         </button>
       </div>
     </div>
@@ -62,6 +62,12 @@
 
       <!-- 本周宝宝发育 -->
       <div v-if="currentWeekData" class="bg-white rounded-3xl shadow-xl p-6">
+        <!-- 周数提示（如果使用的是临近周数数据） -->
+        <div v-if="currentWeekData._note" class="bg-blue-50 text-blue-700 text-sm px-4 py-2 rounded-xl mb-4 flex items-center">
+          <span class="mr-2">ℹ️</span>
+          <span>{{ currentWeekData._note }}</span>
+        </div>
+
         <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
           <span class="text-2xl mr-2">👶</span>
           本周宝宝发育
@@ -189,67 +195,6 @@
         </p>
       </div>
     </div>
-
-    <!-- 设置孕期信息弹窗 -->
-    <div v-if="showSetupModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-3xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between mb-6">
-          <h3 class="text-xl font-bold text-gray-800">设置孕期信息</h3>
-          <button @click="showSetupModal = false" class="text-gray-400 hover:text-gray-600">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-
-        <form @submit.prevent="savePregnancyInfo" class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              末次月经第一天 (LMP)
-            </label>
-            <input
-              v-model="setupForm.lmp"
-              type="date"
-              class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-            >
-            <p class="text-xs text-gray-500 mt-1">或者填写下面的预产期</p>
-          </div>
-
-          <div class="text-center text-gray-400">或</div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              预产期 (EDD)
-            </label>
-            <input
-              v-model="setupForm.edd"
-              type="date"
-              class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-            >
-          </div>
-
-          <div class="flex items-center">
-            <input
-              v-model="setupForm.isHighRisk"
-              type="checkbox"
-              id="highRisk"
-              class="w-5 h-5 text-pink-500 rounded focus:ring-pink-500"
-            >
-            <label for="highRisk" class="ml-2 text-sm text-gray-700">
-              我是高危孕妇（从26周开始监测胎动）
-            </label>
-          </div>
-
-          <button
-            type="submit"
-            :disabled="loading || (!setupForm.lmp && !setupForm.edd)"
-            class="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-3 rounded-xl font-medium hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {{ loading ? '保存中...' : '保存' }}
-          </button>
-        </form>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -263,7 +208,6 @@ export default {
   setup() {
     const router = useRouter();
     const loading = ref(false);
-    const showSetupModal = ref(false);
     const pregnancyInfo = reactive({
       hasPregnancyInfo: false,
       gestationalAge: null,
@@ -271,12 +215,6 @@ export default {
       daysUntilEDD: 0,
       currentWeekData: null,
       movementMonitoring: null
-    });
-
-    const setupForm = reactive({
-      lmp: '',
-      edd: '',
-      isHighRisk: false
     });
 
     const currentWeekData = computed(() => pregnancyInfo.currentWeekData);
@@ -305,38 +243,16 @@ export default {
       }
     };
 
-    const savePregnancyInfo = async () => {
-      if (!setupForm.lmp && !setupForm.edd) {
-        alert('请至少填写末次月经或预产期');
-        return;
-      }
-
-      loading.value = true;
-      try {
-        await api.setupPregnancy(setupForm);
-        showSetupModal.value = false;
-        await loadPregnancyInfo();
-      } catch (error) {
-        console.error('保存失败:', error);
-        alert(error.error || '保存失败，请重试');
-      } finally {
-        loading.value = false;
-      }
-    };
-
     onMounted(() => {
       loadPregnancyInfo();
     });
 
     return {
       loading,
-      showSetupModal,
       pregnancyInfo,
-      setupForm,
       currentWeekData,
       trimesterName,
-      formatDate,
-      savePregnancyInfo
+      formatDate
     };
   }
 };

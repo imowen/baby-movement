@@ -33,6 +33,26 @@
       <div class="space-y-4">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">
+            产妇出生日期
+          </label>
+          <input
+            type="date"
+            v-model="birthDateInput"
+            @change="updateHighRiskFromAge"
+            :max="maxBirthDate"
+            class="input-field text-center"
+          />
+          <p class="text-xs text-gray-500 mt-2">
+            💡 系统将根据年龄自动判断是否高危（<18岁或≥35岁）
+          </p>
+          <div v-if="ageInfo" class="text-xs mt-2" :class="ageInfo.isHighRisk ? 'text-orange-600 font-medium' : 'text-gray-600'">
+            当前年龄：{{ ageInfo.age }}岁
+            <span v-if="ageInfo.isHighRisk" class="ml-2">⚠️ {{ ageInfo.reason }}</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
             预产期
           </label>
           <input
@@ -47,12 +67,38 @@
           </p>
         </div>
 
+        <!-- 高危孕妇选项 -->
+        <div class="bg-yellow-50 rounded-xl p-4 space-y-3">
+          <div class="flex items-center">
+            <input
+              v-model="isHighRiskInput"
+              type="checkbox"
+              id="highRisk"
+              class="w-5 h-5 text-pink-500 rounded focus:ring-pink-500"
+            >
+            <label for="highRisk" class="ml-3 text-sm text-gray-700">
+              <span class="font-medium">我是高危孕妇</span>
+              <span class="block text-xs text-gray-500 mt-1">从26周开始加强胎动监测</span>
+            </label>
+          </div>
+          <div class="text-xs text-gray-600 bg-yellow-100 rounded-lg p-3">
+            <p class="font-medium mb-1">💡 其他需要勾选的情况：</p>
+            <ul class="space-y-1 ml-2">
+              <li>• 妊娠糖尿病或高血糖</li>
+              <li>• 妊娠高血压</li>
+              <li>• 多胎妊娠（双胎、三胎等）</li>
+              <li>• 前置胎盘或胎盘异常</li>
+              <li>• 心脏病、肾病等慢性疾病</li>
+            </ul>
+          </div>
+        </div>
+
         <button
           @click="saveDueDate"
           :disabled="!dueDateInput || saving"
           class="btn-primary w-full disabled:opacity-50"
         >
-          {{ saving ? '保存中...' : '保存预产期' }}
+          {{ saving ? '保存中...' : '保存设置' }}
         </button>
 
         <!-- 成功提示 -->
@@ -193,8 +239,10 @@ const handleLogout = () => {
 };
 
 // 状态
-const settings = ref({ dueDate: null, timezone: 'auto' });
+const settings = ref({ dueDate: null, timezone: 'auto', isHighRisk: false });
 const dueDateInput = ref('');
+const birthDateInput = ref('');
+const isHighRiskInput = ref(false);
 const saving = ref(false);
 const saveSuccess = ref(false);
 const saveError = ref('');
@@ -219,6 +267,36 @@ const maxDate = computed(() => {
   const date = new Date();
   date.setMonth(date.getMonth() + 10);
   return date.toISOString().split('T')[0];
+});
+
+const maxBirthDate = computed(() => {
+  // 出生日期最大值为今天
+  return new Date().toISOString().split('T')[0];
+});
+
+// 计算年龄信息
+const ageInfo = computed(() => {
+  if (!birthDateInput.value) return null;
+
+  const birthDate = new Date(birthDateInput.value);
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+
+  // 如果还没到生日，年龄减1
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+
+  const isHighRisk = age < 18 || age >= 35;
+  let reason = '';
+  if (age < 18) {
+    reason = '青少年妊娠，建议加强监测';
+  } else if (age >= 35) {
+    reason = '高龄产妇，建议加强监测';
+  }
+
+  return { age, isHighRisk, reason };
 });
 
 // 计算孕周信息
@@ -280,6 +358,13 @@ const updateCurrentTime = () => {
   currentTimeDisplay.value = getCurrentTime(timezone);
 };
 
+// 根据年龄自动更新高危状态
+const updateHighRiskFromAge = () => {
+  if (ageInfo.value) {
+    isHighRiskInput.value = ageInfo.value.isHighRisk;
+  }
+};
+
 // 定时器
 let timeUpdateInterval = null;
 
@@ -291,8 +376,14 @@ const loadSettings = async () => {
     if (data.dueDate) {
       dueDateInput.value = data.dueDate.split('T')[0];
     }
+    if (data.birthDate) {
+      birthDateInput.value = data.birthDate.split('T')[0];
+    }
     if (data.timezone) {
       timezoneInput.value = data.timezone;
+    }
+    if (data.isHighRisk !== undefined) {
+      isHighRiskInput.value = data.isHighRisk;
     }
     updateCurrentTime();
   } catch (error) {
@@ -326,7 +417,11 @@ const saveDueDate = async () => {
   saveError.value = '';
 
   try {
-    const data = await api.setDueDate(dueDateInput.value);
+    const data = await api.setDueDate(
+      dueDateInput.value,
+      isHighRiskInput.value,
+      birthDateInput.value || null
+    );
     settings.value = data;
 
     saveSuccess.value = true;

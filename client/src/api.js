@@ -88,8 +88,8 @@ export default {
   getSettings() {
     return api.get('/settings');
   },
-  setDueDate(dueDate) {
-    return api.post('/settings/due-date', { dueDate });
+  setDueDate(dueDate, isHighRisk, birthDate) {
+    return api.post('/settings/due-date', { dueDate, isHighRisk, birthDate });
   },
   setTimezone(timezone) {
     return api.post('/settings/timezone', { timezone });

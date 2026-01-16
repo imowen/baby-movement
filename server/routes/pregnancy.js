@@ -64,7 +64,22 @@ router.get('/info', auth, async (req, res) => {
 
     // 获取当前周的发育信息
     const currentWeek = Math.min(Math.max(gestationalAge.weeks, 1), 40); // 限制在1-40周
-    const weekData = pregnancyData.weeklyDevelopment[currentWeek.toString()];
+    let weekData = pregnancyData.weeklyDevelopment[currentWeek.toString()];
+
+    // 如果当前周数没有数据，向前查找最近的周数数据
+    if (!weekData) {
+      for (let week = currentWeek - 1; week >= 1; week--) {
+        weekData = pregnancyData.weeklyDevelopment[week.toString()];
+        if (weekData) {
+          // 添加提示信息，说明使用的是临近周数的数据
+          weekData = {
+            ...weekData,
+            _note: `当前第${currentWeek}周，以下为第${week}周的参考信息`
+          };
+          break;
+        }
+      }
+    }
 
     // 获取胎动监测建议
     const movementMonitoring = shouldMonitorFetalMovement(
