@@ -24,6 +24,15 @@
         </router-link>
 
         <router-link
+          to="/pregnancy-photos"
+          class="flex flex-col items-center gap-1 transition-colors duration-200"
+          :class="$route.path === '/pregnancy-photos' ? 'text-primary-500' : 'text-gray-400'"
+        >
+          <span class="text-2xl">📸</span>
+          <span class="text-xs font-medium">孕照</span>
+        </router-link>
+
+        <router-link
           to="/settings"
           class="flex flex-col items-center gap-1 transition-colors duration-200"
           :class="$route.path === '/settings' ? 'text-primary-500' : 'text-gray-400'"

@@ -1,12 +1,18 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import authRoutes from './routes/auth.js';
 import movementsRoutes from './routes/movements.js';
 import settingsRoutes from './routes/settings.js';
 import pregnancyRoutes from './routes/pregnancy.js';
+import photosRoutes from './routes/photos.js';
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -15,11 +21,15 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// 静态文件：提供上传的照片访问
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // API 路由
 app.use('/api/auth', authRoutes);
 app.use('/api/movements', movementsRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/pregnancy', pregnancyRoutes);
+app.use('/api/photos', photosRoutes);
 
 // 健康检查
 app.get('/api/health', (req, res) => {

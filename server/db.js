@@ -10,6 +10,7 @@ const __dirname = dirname(__filename);
 const defaultData = {
   users: [],
   movements: [],
+  pregnancyPhotos: [],  // 孕照数据
   settings: {
     dueDate: null,  // 预产期
     timezone: 'auto',  // 时区：'auto'或IANA时区标识符

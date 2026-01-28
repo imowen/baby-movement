@@ -23,7 +23,8 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
-    if (error.response?.status === 401) {
+    // 处理401未授权和403登录过期
+    if (error.response?.status === 401 || error.response?.status === 403) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
@@ -115,5 +116,23 @@ export default {
   // 胎动分析
   analyzeMovements() {
     return api.get('/movements/analyze');
+  },
+
+  // 孕照管理
+  uploadPhoto(formData) {
+    return api.post('/photos/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+  },
+  getWeekPhotos(weekNumber) {
+    return api.get(`/photos/week/${weekNumber}`);
+  },
+  getPhotosTimeline() {
+    return api.get('/photos/timeline');
+  },
+  deletePhoto(photoId) {
+    return api.delete(`/photos/${photoId}`);
   }
 };
