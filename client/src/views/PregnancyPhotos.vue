@@ -5,6 +5,9 @@
       <div class="text-center mb-8">
         <h1 class="text-3xl font-bold text-gray-800 mb-2">📸 孕期照片时间线</h1>
         <p class="text-gray-600">记录宝宝成长的每一周 💕</p>
+        <p v-if="currentWeek > 0" class="text-pink-500 font-semibold mt-2">
+          当前第 {{currentWeek}} 周
+        </p>
       </div>
 
       <!-- 加载状态 -->
@@ -19,16 +22,23 @@
           v-for="item in timeline"
           :key="item.week"
           @click="selectWeek(item.week)"
-          class="aspect-square rounded-lg cursor-pointer transition-all hover:scale-105"
+          class="aspect-square rounded-lg transition-all"
           :class="[
-            item.hasPhotos
-              ? 'bg-white shadow-md hover:shadow-lg'
-              : 'bg-gray-100 hover:bg-gray-200',
+            item.week > currentWeek
+              ? 'bg-gray-50 cursor-not-allowed opacity-50'
+              : item.hasPhotos
+                ? 'bg-white shadow-md hover:shadow-lg cursor-pointer hover:scale-105'
+                : 'bg-gray-100 hover:bg-gray-200 cursor-pointer hover:scale-105',
             selectedWeek === item.week ? 'ring-4 ring-pink-500' : ''
           ]"
         >
           <div class="h-full flex flex-col items-center justify-center p-2">
-            <div class="text-xs text-gray-500 mb-1">第{{item.week}}周</div>
+            <div
+              class="text-xs mb-1"
+              :class="item.week > currentWeek ? 'text-gray-400' : 'text-gray-500'"
+            >
+              第{{item.week}}周
+            </div>
             <div v-if="item.mainPhoto" class="w-full h-16 rounded overflow-hidden">
               <img
                 :src="item.mainPhoto.url"
@@ -36,6 +46,7 @@
                 class="w-full h-full object-cover"
               >
             </div>
+            <div v-else-if="item.week > currentWeek" class="text-2xl text-gray-300">🔒</div>
             <div v-else class="text-2xl text-gray-300">📷</div>
             <div v-if="item.additionalCount > 0" class="text-xs text-pink-500 mt-1">
               +{{item.additionalCount}}
@@ -166,11 +177,30 @@ export default {
     const weekPhotos = ref({ mainPhoto: null, additionalPhotos: [] });
     const loading = ref(true);
     const uploading = ref(false);
+    const currentWeek = ref(0); // 当前孕周
+
+    // 加载孕期信息
+    const loadPregnancyInfo = async () => {
+      try {
+        const data = await api.getPregnancyInfo();
+        if (data.hasPregnancyInfo && data.gestationalAge) {
+          currentWeek.value = data.gestationalAge.weeks;
+          console.log('当前孕周:', currentWeek.value);
+        } else {
+          console.warn('未设置孕期信息');
+          currentWeek.value = 0;
+        }
+      } catch (error) {
+        console.error('加载孕期信息失败:', error);
+        currentWeek.value = 0;
+      }
+    };
 
     // 加载时间线
     const loadTimeline = async () => {
       try {
         loading.value = true;
+        await loadPregnancyInfo(); // 先加载孕期信息
         const data = await api.getPhotosTimeline();
         timeline.value = data.timeline;
       } catch (error) {
@@ -183,6 +213,12 @@ export default {
 
     // 选择周
     const selectWeek = async (week) => {
+      // 检查是否是未来的周
+      if (week > currentWeek.value) {
+        alert(`当前是第${currentWeek.value}周，暂时无法上传第${week}周的照片`);
+        return;
+      }
+
       selectedWeek.value = week;
       try {
         const data = await api.getWeekPhotos(week);
@@ -337,6 +373,7 @@ export default {
       weekPhotos,
       loading,
       uploading,
+      currentWeek,
       selectWeek,
       closeModal,
       handleFileSelect,

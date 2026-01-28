@@ -64,6 +64,28 @@ router.post('/upload', auth, upload.single('photo'), async (req, res) => {
 
     const db = getDb();
 
+    // 获取用户的预产期，验证是否可以上传该周的照片
+    const user = db.data.users.find(u => u.id === userId);
+    if (user && user.edd) {
+      const dueDate = new Date(user.edd);
+      const now = new Date();
+      const diffTime = dueDate - now;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const weeksUntilDue = Math.ceil(diffDays / 7);
+      const currentWeek = Math.max(1, Math.min(40, 40 - weeksUntilDue));
+
+      if (parseInt(week) > currentWeek) {
+        // 删除已上传的文件
+        const filePath = path.join(__dirname, '../uploads/pregnancy-photos', req.file.filename);
+        if (existsSync(filePath)) {
+          await unlink(filePath);
+        }
+        return res.status(400).json({
+          error: `当前是第${currentWeek}周，暂时无法上传第${week}周的照片`
+        });
+      }
+    }
+
     // 检查该周的照片数量
     const weekPhotos = db.data.pregnancyPhotos?.filter(
       p => p.userId === userId && p.week === parseInt(week)
