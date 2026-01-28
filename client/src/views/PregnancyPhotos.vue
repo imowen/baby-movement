@@ -199,14 +199,73 @@ export default {
       weekPhotos.value = { mainPhoto: null, additionalPhotos: [] };
     };
 
+    // 压缩图片
+    const compressImage = (file, maxSizeMB = 2, quality = 0.85) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (e) => {
+          const img = new Image();
+          img.src = e.target.result;
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+
+            // 如果图片太大，按比例缩小
+            const maxDimension = 2000;
+            if (width > maxDimension || height > maxDimension) {
+              if (width > height) {
+                height = (height / width) * maxDimension;
+                width = maxDimension;
+              } else {
+                width = (width / height) * maxDimension;
+                height = maxDimension;
+              }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // 转换为Blob
+            canvas.toBlob(
+              (blob) => {
+                if (blob) {
+                  // 检查压缩后的大小
+                  const compressedSizeMB = blob.size / 1024 / 1024;
+                  console.log(`原始大小: ${(file.size / 1024 / 1024).toFixed(2)}MB, 压缩后: ${compressedSizeMB.toFixed(2)}MB`);
+
+                  // 创建新的File对象
+                  const compressedFile = new File([blob], file.name, {
+                    type: 'image/jpeg',
+                    lastModified: Date.now()
+                  });
+                  resolve(compressedFile);
+                } else {
+                  reject(new Error('压缩失败'));
+                }
+              },
+              'image/jpeg',
+              quality
+            );
+          };
+          img.onerror = () => reject(new Error('图片加载失败'));
+        };
+        reader.onerror = () => reject(new Error('文件读取失败'));
+      });
+    };
+
     // 处理文件选择
     const handleFileSelect = async (event, type) => {
       const file = event.target.files[0];
       if (!file) return;
 
-      // 验证文件大小
-      if (file.size > 5 * 1024 * 1024) {
-        alert('照片大小不能超过5MB');
+      // 验证文件大小（原始文件不超过20MB）
+      if (file.size > 20 * 1024 * 1024) {
+        alert('照片大小不能超过20MB');
         return;
       }
 
@@ -219,8 +278,20 @@ export default {
       try {
         uploading.value = true;
 
+        // 压缩图片
+        let processedFile = file;
+        if (file.size > 5 * 1024 * 1024) {
+          // 只有大于5MB的图片才压缩
+          try {
+            processedFile = await compressImage(file);
+          } catch (error) {
+            console.error('压缩失败，使用原图:', error);
+            // 如果压缩失败，使用原图
+          }
+        }
+
         const formData = new FormData();
-        formData.append('photo', file);
+        formData.append('photo', processedFile);
         formData.append('week', selectedWeek.value);
         formData.append('type', type);
 
